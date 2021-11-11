@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>awesome_slam</name>
+  <version>0.0.1</version>
+  <description>
+    SLAM with turtlebot3
+  </description>
+  <license>Apache 2.0</license>
+  <author email="arkajbasak1211@gmail.com">Arka</author>
+  <maintainer email="arkajbasak1211@gmail.com">Arka</maintainer>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>turtlebot3_drive</depend>
+  <depend>turtlebot3_gazebo</depend>
+  <depend>turtlebot3_teleop</depend>
+  <export>
+    <gazebo_ros gazebo_media_path="${prefix}"/>
+  </export>
+</package>
