@@ -13,10 +13,10 @@
         </include>
 
         <!-- Boundary Walls -->
-        <include>
+        <!-- <include>
             <uri>model://awesome_boundary</uri>
             <pose>0 0 0 0 0 0</pose>
-        </include>
+        </include> -->
 
         <include>
             <uri>model://awesome_cylinder</uri>
