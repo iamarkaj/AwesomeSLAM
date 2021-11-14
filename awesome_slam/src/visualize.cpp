@@ -47,7 +47,7 @@ class ASlamVisualize
         {
             visualization_msgs::Marker marker;
             marker.id = id;
-            marker.header.frame_id = "map";
+            marker.header.frame_id = "base_footprint";
             marker.header.stamp = ros::Time::now();
             marker.type = visualization_msgs::Marker::CYLINDER;
             marker.action = visualization_msgs::Marker::ADD;

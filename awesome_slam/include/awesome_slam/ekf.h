@@ -6,11 +6,12 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
 
-#define LASER_MAX_RANGE 3.5
-#define DEG2RAD 0.01745329251
-#define ADJUST_ANGLE 0.10966227112
-#define LANDMARKS_COUNT 3
-#define N 9
+
+#define DEG2RAD 0.01745329251           // PI/180
+#define ADJUST_ANGLE 0.10966227112      // Adjust -ve angle while converting quaternion to euler
+#define LANDMARKS_COUNT 3               // Number of landmarks
+#define N 9                             // LANDMARKS_COUNT*2 + 3
+
 
 namespace aslam
 {
@@ -21,22 +22,18 @@ namespace aslam
 
         private:
             ros::NodeHandle nh;
-            ros::Subscriber subLaser, subOdom, subTeleop;
+            ros::Subscriber subLaser, subOdom;
             ros::Publisher pubLandmarks;
-            Eigen::Matrix<float,N,N> I, F, P, K, H, Q, R, S;
-            Eigen::Matrix<float,N,1> X, Z, B, Y;
-            Eigen::Matrix<float,1,1> U;
-            std::vector<std::pair<float,float>> landMarks;
-            float vel;
-            bool onLandmark;
+            Eigen::Matrix<float,N,N> I, A, P, K, H, Q, R, S;
+            Eigen::Matrix<float,N,1> X, Z, Y, W;
+            std::vector<std::pair<float,float>> landmarks;
+            bool onLandmark, initX, initXwithLaser;
             int landmarkStartAngle, k;
 
             void initialize();
-            void updateH();
-            void updateB();
             void cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan);
             void cbOdom(const nav_msgs::Odometry::ConstPtr& msg);
-            void cbTeleop(const geometry_msgs::TwistConstPtr& msg);
+            void updateH();
             void slam();
             void publishLandmarks();
     };
