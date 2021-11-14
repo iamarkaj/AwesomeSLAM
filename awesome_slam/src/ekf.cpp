@@ -3,7 +3,7 @@
 
 aslam::EKFSlam::EKFSlam():nh(ros::NodeHandle())
 { 
-    pubLandmarks = nh.advertise<awesome_slam::Landmarks>("out/landmarks", 1);
+    pubLandmarks = nh.advertise<awesome_slam_msgs::Landmarks>("out/landmarks", 1);
     subLaser     = nh.subscribe("/laser/scan", 1, &aslam::EKFSlam::cbLaser, this);
     subOdom      = nh.subscribe("/odom", 1, &aslam::EKFSlam::cbOdom, this);
     subTeleop    = nh.subscribe("/cmd_vel", 1, &aslam::EKFSlam::cbTeleop, this);
@@ -30,8 +30,8 @@ void aslam::EKFSlam::initialize()
     P = 0.02*I;
     Q = 0.001*I;
     
-    R.block<3,3>(0,0) = Eigen::MatrixXf::Identity(3,3)*0.2;
-    R.block<LANDMARKS_COUNT*2,LANDMARKS_COUNT*2>(3,3) = Eigen::MatrixXf::Identity(LANDMARKS_COUNT*2,LANDMARKS_COUNT*2)*0.5;
+    R.block<3,3>(0,0) = Eigen::MatrixXf::Identity(3,3)*0.1;
+    R.block<LANDMARKS_COUNT*2,LANDMARKS_COUNT*2>(3,3) = Eigen::MatrixXf::Identity(LANDMARKS_COUNT*2,LANDMARKS_COUNT*2)*0.2;
     for(int i=0; i<LANDMARKS_COUNT; i++){ landMarks.push_back({2.0,2.0}); }
 }
 
@@ -77,7 +77,7 @@ void aslam::EKFSlam::cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan)
             landmarkStartAngle = i;
             onLandmark = true;
         } 
-        else if(scan->ranges[i]>LASER_MAX_RANGE && onLandmark == true) 
+        else if(scan->ranges[i]>LASER_MAX_RANGE && onLandmark) 
         {
             tmp = ((i-1)<landmarkStartAngle) ? int((i-1+landmarkStartAngle-360)>>1) : int((i-1+landmarkStartAngle)>>1);
             landMarks[k].first = scan->ranges[tmp];
@@ -140,7 +140,7 @@ void aslam::EKFSlam::slam()
 
 void aslam::EKFSlam::publishLandmarks()
 {
-    awesome_slam::Landmarks l;
+    awesome_slam_msgs::Landmarks l;
     std::vector<double> _predictedLandmarkX(3), _predictedLandmarkY(3);
     for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
     {
@@ -158,7 +158,6 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "slam_ekf");
     ros::Time::init();
     ros::Rate rate(1);
-    std::cerr << "Starting..\n";
     aslam::EKFSlam a;
     
     while(ros::ok()) 

@@ -2,7 +2,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
-#include <awesome_slam/Landmarks.h>
+#include <awesome_slam_msgs/Landmarks.h>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
 

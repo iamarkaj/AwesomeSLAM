@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>awesome_slam</name>
+  <name>awesome_slam_msgs</name>
   <version>0.0.1</version>
   <description>
-    SLAM with turtlebot3
+    Message and service types: custom messages and services for awesome_slam package.
   </description>
   <license>Apache 2.0</license>
   <author email="arkajbasak1211@gmail.com">Arka</author>
   <maintainer email="arkajbasak1211@gmail.com">Arka</maintainer>
   <buildtool_depend>catkin</buildtool_depend>
-  <depend>turtlebot3_gazebo</depend>
-  <depend>turtlebot3_teleop</depend>
-  <depend>awesome_slam_msgs</depend>
+  <build_depend>message_generation</build_depend>
+  <build_export_depend>message_runtime</build_export_depend>
+  <exec_depend>message_runtime</exec_depend>
   <export>
     <gazebo_ros gazebo_media_path="${prefix}"/>
   </export>
