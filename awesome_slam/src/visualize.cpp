@@ -5,7 +5,7 @@
 #include <geometry_msgs/Pose.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <awesome_slam/Landmarks.h>
+#include <awesome_slam_msgs/Landmarks.h>
 
 
 class ASlamVisualize
@@ -14,8 +14,8 @@ class ASlamVisualize
         ASlamVisualize():nh(ros::NodeHandle())
         {
             subLandmark = nh.subscribe("out/landmarks", 100, &ASlamVisualize::cbLandmarks, this);
-            pubMarker = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 100);
-            pubMap = nh.advertise<nav_msgs::OccupancyGrid>("out/map", 100);
+            pubMarker   = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 100);
+            pubMap      = nh.advertise<nav_msgs::OccupancyGrid>("out/map", 100);
         }
         
     private:
@@ -27,8 +27,9 @@ class ASlamVisualize
         geometry_msgs::Pose* p;
 
 
-        void cbLandmarks(const awesome_slam::LandmarksConstPtr& msg)
+        void cbLandmarks(const awesome_slam_msgs::LandmarksConstPtr& msg)
         {
+            ////////////////////////////////////////////////////////////
             visualization_msgs::MarkerArray markerArray;
             for (int i=0; i<msg->x.size(); i++)
             {
@@ -46,8 +47,7 @@ class ASlamVisualize
         {
             visualization_msgs::Marker marker;
             marker.id = id;
-            marker.ns = "map_rviz";
-            marker.header.frame_id = "/map";
+            marker.header.frame_id = "map";
             marker.header.stamp = ros::Time::now();
             marker.type = visualization_msgs::Marker::CYLINDER;
             marker.action = visualization_msgs::Marker::ADD;
@@ -100,7 +100,6 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "slam_visualize");
     ros::Time::init();
     ros::Rate rate(1);
-    std::cerr << "Starting..\n";
     ASlamVisualize a;
     
     while(ros::ok()) 
