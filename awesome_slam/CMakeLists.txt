@@ -28,19 +28,15 @@ include_directories(
   ${GAZEBO_INCLUDE_DIRS}
 )
 
-add_executable(ekf src/ekf.cpp)
-
 install(DIRECTORY 
   models
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-add_dependencies(ekf 
-  ${ekf_EXPORTED_TARGETS} 
-  ${catkin_EXPORTED_TARGETS}
-)
+add_executable(ekf src/ekf.cpp)
+add_dependencies(ekf ${ekf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(ekf ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
-target_link_libraries(ekf 
-  ${catkin_LIBRARIES} 
-  ${GAZEBO_LIBRARIES}
-)
+add_executable(visualize src/visualize.cpp)
+add_dependencies(visualize ${visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(visualize ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
