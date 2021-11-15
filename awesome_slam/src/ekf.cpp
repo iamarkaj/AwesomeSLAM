@@ -66,6 +66,7 @@ void aslam::EKFSlam::cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan)
 
 
 
+/// \brief Odom callback
 void aslam::EKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
 {
     /// \brief Update landmarks with initial laser data first
