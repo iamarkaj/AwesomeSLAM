@@ -33,5 +33,5 @@ add_dependencies(visualize ${visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGE
 target_link_libraries(visualize ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 add_executable(ukf src/ukf.cpp)
-add_dependencies(ukf ${ekf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(ukf ${ukf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ukf ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})

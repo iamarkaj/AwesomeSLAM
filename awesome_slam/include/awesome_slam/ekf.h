@@ -8,7 +8,7 @@
 
 
 #define DEG2RAD 0.01745329251           // PI/180
-#define ADJUST_ANGLE 0.10966227112      // Adjust -ve angle while converting quaternion to euler
+#define PI 3.141592654                  // PI
 #define LANDMARKS_COUNT 3               // Number of landmarks
 #define N 9                             // LANDMARKS_COUNT*2 + 3
 
@@ -33,6 +33,7 @@ namespace aslam
             void initialize();
             void cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan);
             void cbOdom(const nav_msgs::Odometry::ConstPtr& msg);
+            float normalizeAngle(float theta);
             void updateH();
             void slam();
             void publishLandmarks();

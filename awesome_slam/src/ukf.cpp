@@ -4,7 +4,7 @@
 aslam::UKFSlam::UKFSlam():nh(ros::NodeHandle())
 { 
     pubLandmarks = nh.advertise<awesome_slam_msgs::Landmarks>("out/landmarks", 1);
-    subLaser     = nh.subscribe("/laser/scan", 100, &aslam::UKFSlam::cbLaser, this);
+    subLaser     = nh.subscribe("/laser/scan", 1, &aslam::UKFSlam::cbLaser, this);
     subOdom      = nh.subscribe("/odom", 1, &aslam::UKFSlam::cbOdom, this);
     aslam::UKFSlam::initialize();
 }
@@ -18,7 +18,7 @@ void aslam::UKFSlam::initialize()
     landmarkStartAngle = 0, t = 0;
     initX = true, initXwithLaser = true;
 
-    a = 0.2;
+    a = 0.1;
     b = 2.0;
     k = 3-N;
 
@@ -28,10 +28,12 @@ void aslam::UKFSlam::initialize()
     wRest  = 1/(2*(N+lambda));
     
     P = Eigen::MatrixXf::Identity(N,N)*0.001;
-    R = Eigen::MatrixXf::Identity(N,N)*0.02;
+    P.block<LANDMARKS_COUNT*2,LANDMARKS_COUNT*2>(3,3) = Eigen::MatrixXf::Identity(LANDMARKS_COUNT*2,LANDMARKS_COUNT*2)*100;
+
+    R = Eigen::MatrixXf::Identity(N,N)*0.2;
     
     Q = Eigen::MatrixXf::Zero(N,N);
-    Q.block<3,3>(0,0) = Eigen::MatrixXf::Identity(3,3)*0.000001;
+    Q.block<3,3>(0,0) = Eigen::MatrixXf::Identity(3,3)*0.001;
     
     for(int i=0; i<LANDMARKS_COUNT; i++){ landmarks.push_back({0.0,0.0}); }
 }
@@ -53,24 +55,16 @@ void aslam::UKFSlam::cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan)
         } 
         else if(scan->ranges[i]>scan->range_max && onLandmark) 
         {
-            tmp = ((i-1)<landmarkStartAngle) ? int((i-1+landmarkStartAngle-360)>>1) : int((i-1+landmarkStartAngle)>>1);
+            if(i<landmarkStartAngle) { tmp = landmarkStartAngle>(360-i) ? landmarkStartAngle+i-360 : landmarkStartAngle-i+360; }
+            else { tmp = landmarkStartAngle+i; }
+            tmp = int(tmp>>1);
             landmarks[t].first = scan->ranges[tmp];
-            landmarks[t].second = aslam::UKFSlam::normalizeAngle(DEG2RAD*tmp);
+            landmarks[t].second = DEG2RAD*tmp;
             t++;
-            if(t>=LANDMARKS_COUNT) { t=0; }
+            if(t==LANDMARKS_COUNT) { t=0; }
             onLandmark = false;
         }
     }
-}
-
-
-
-/// \brief Normalize angle
-float aslam::UKFSlam::normalizeAngle(float theta)
-{
-    theta = std::fmod(theta, 2*PI);         // move in range  0  to 2PI
-    if(theta>PI) { theta = theta - 2*PI; }  // move in range -PI to PI
-    return theta;
 }
 
 
@@ -97,9 +91,8 @@ void aslam::UKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
     for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
     {
         Z(3+i) = landmarks[i/2].first;
-        Z(4+i) = landmarks[i/2].second;
+        Z(4+i) = aslam::UKFSlam::normalizeAngle(landmarks[i/2].second);
     }
-
 
     /// \brief Initialize X with odom and laser data, will run only once
     ////////////////////////////////////////////////////////////
@@ -128,14 +121,27 @@ void aslam::UKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
 
 
 
+/// \brief Normalize angle
+float aslam::UKFSlam::normalizeAngle(float theta)
+{
+    theta = std::fmod(theta, 2*PI);         // move in range  0  to 2PI
+    if(theta>PI) { theta = theta - 2*PI; }  // move in range -PI to PI
+    return theta;
+}
+
+
+
 /// \brief State transition function aka A
 Eigen::Matrix<float,N,1> aslam::UKFSlam::stateTransitionFunction(const Eigen::Matrix<float,N,1>& point, float vx, float az)
 {
     Eigen::Matrix<float,N,1> _point = point;
-    float R = vx / az;
-    _point(0) += R*(-std::sin(point(2)) + std::sin(point(2) + az));
-    _point(1) += R*( std::cos(point(2)) - std::cos(point(2) + az));
-    _point(2) += az;
+    if(vx && az)
+    {
+        float R = vx / az;
+        _point(0) += R*(-std::sin(point(2)) + std::sin(point(2) + az));
+        _point(1) += R*( std::cos(point(2)) - std::cos(point(2) + az));
+        _point(2) += az;
+    }
     return _point;
 }
 
@@ -148,7 +154,7 @@ Eigen::Matrix<float,N,1> aslam::UKFSlam::measurementFunction(const Eigen::Matrix
     for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
     {
         _point(3+i) = std::sqrt(std::pow(point(3+i)-point(0),2) + std::pow(point(4+i)-point(1),2));
-        _point(4+i) = std::atan2(point(3+i)-point(0), point(4+i)-point(1))-point(2);
+        _point(4+i) = aslam::UKFSlam::normalizeAngle(std::atan2(point(4+i)-point(1), point(3+i)-point(0))-point(2));
     }
     return _point;
 }
@@ -162,25 +168,25 @@ void aslam::UKFSlam::slam(float vx, float az)
 {
     /// \brief Generate sigma points XX
     ////////////////////////////////////////////////////////////
-    std::vector<Eigen::Matrix<float,N,1>> XX;
+    std::vector<Eigen::Matrix<float,N,1>> XX = {X};
     Eigen::Matrix<float,N,N> chol = P.llt().matrixL();
     for(int i=0; i<2*N; i++)
     {   
-        if(i<N) { XX.push_back(X + (std::sqrt(N + lambda)*chol).block<1,9>(i,0).transpose()); }
-        else    { XX.push_back(X - (std::sqrt(N + lambda)*chol).block<1,9>(i-N,0).transpose()); }
+        if(i<N) { XX.push_back(X + (std::sqrt(N + lambda)*chol).block<1,N>(i,0).transpose()); }
+        else    { XX.push_back(X - (std::sqrt(N + lambda)*chol).block<1,N>(i-N,0).transpose()); }
     }
 
 
     /// \brief PREDICT STEP
     ////////////////////////////////////////////////////////////
     std::vector<Eigen::Matrix<float,N,1>> YY;
-    for(int i=0; i<2*N; i++)  { YY.push_back(aslam::UKFSlam::stateTransitionFunction(XX[i], vx, az)); }
+    for(int i=0; i<=2*N; i++)  { YY.push_back(aslam::UKFSlam::stateTransitionFunction(XX[i], vx, az)); }
     
     X = wMean0 * YY[0];
-    for(int i=1; i<2*N; i++) { X += wRest * YY[i]; }
+    for(int i=1; i<=2*N; i++) { X += wRest * YY[i]; }
 
     P = wCov0 * (YY[0] - X) * (YY[0] - X).transpose();
-    for(int i=1; i<2*N; i++) { P += wRest * (YY[i] - X) * (YY[i] - X).transpose(); }
+    for(int i=1; i<=2*N; i++) { P += wRest * (YY[i] - X) * (YY[i] - X).transpose(); }
     
     P = P + Q;
 
@@ -189,20 +195,20 @@ void aslam::UKFSlam::slam(float vx, float az)
     /// \brief UPDATE STEP
     ////////////////////////////////////////////////////////////
     std::vector<Eigen::Matrix<float,N,1>> ZZ;
-    for(int i=0; i<2*N; i++) { ZZ.push_back(aslam::UKFSlam::measurementFunction(YY[i])); }
+    for(int i=0; i<=2*N; i++) { ZZ.push_back(aslam::UKFSlam::measurementFunction(YY[i])); }
     
     muZ = wMean0 * ZZ[0];
-    for(int i=1; i<2*N; i++) { muZ += wRest * ZZ[i]; }
+    for(int i=1; i<=2*N; i++) { muZ += wRest * ZZ[i]; }
     
     y = Z - muZ;
     
     Pz = wCov0 * (ZZ[0] - muZ) * (ZZ[0] - muZ).transpose();
-    for(int i=1; i<2*N; i++) { Pz += wRest * (ZZ[i] - muZ) * (ZZ[i] - muZ).transpose(); }
+    for(int i=1; i<=2*N; i++) { Pz += wRest * (ZZ[i] - muZ) * (ZZ[i] - muZ).transpose(); }
     
     Pz = Pz + R;
     
     K = wCov0 * (YY[0] - X) * (ZZ[0] - muZ).transpose();
-    for(int i=1; i<2*N; i++) { K += wRest * (YY[i] - X) * (ZZ[i] - muZ).transpose(); }
+    for(int i=1; i<=2*N; i++) { K += wRest * (YY[i] - X) * (ZZ[i] - muZ).transpose(); }
     
     K = K * Pz.inverse();
     
@@ -217,7 +223,7 @@ void aslam::UKFSlam::slam(float vx, float az)
 void aslam::UKFSlam::publishLandmarks()
 {
     awesome_slam_msgs::Landmarks l;
-    std::vector<double> _predictedLandmarkX(3), _predictedLandmarkY(3);
+    std::vector<double> _predictedLandmarkX(LANDMARKS_COUNT), _predictedLandmarkY(LANDMARKS_COUNT);
 
     for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
     {

@@ -28,8 +28,8 @@ namespace aslam
             Eigen::Matrix<float,N,N> P, K, Pz, Q, R;
             Eigen::Matrix<float,N,1> X, Z, muZ, y;
             std::vector<std::pair<float,float>> landmarks;
-            bool onLandmark, initX, initXwithLaser;
             float a, b, k, lambda, wMean0, wCov0, wRest;
+            bool onLandmark, initX, initXwithLaser;
             int landmarkStartAngle, t;
 
             void initialize();

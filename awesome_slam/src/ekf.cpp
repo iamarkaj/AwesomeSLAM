@@ -24,8 +24,8 @@ void aslam::EKFSlam::initialize()
     W(1) = 0.001;
     W(2) = 0.001;
 
-    P = Eigen::MatrixXf::Identity(N,N)*0.00001;
-    P.block<LANDMARKS_COUNT*2,LANDMARKS_COUNT*2>(3,3) = Eigen::MatrixXf::Identity(LANDMARKS_COUNT*2,LANDMARKS_COUNT*2)*1000;
+    P = Eigen::MatrixXf::Identity(N,N)*0.001;
+    P.block<LANDMARKS_COUNT*2,LANDMARKS_COUNT*2>(3,3) = Eigen::MatrixXf::Identity(LANDMARKS_COUNT*2,LANDMARKS_COUNT*2)*100;
 
     Q = Eigen::MatrixXf::Zero(N,N);
     Q.block<3,3>(0,0) = Eigen::MatrixXf::Identity(3,3)*0.001;
@@ -54,11 +54,13 @@ void aslam::EKFSlam::cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan)
         } 
         else if(scan->ranges[i]>scan->range_max && onLandmark) 
         {
-            tmp = ((i-1)<landmarkStartAngle) ? int((i-1+landmarkStartAngle-360)>>1) : int((i-1+landmarkStartAngle)>>1);
+            if(i<landmarkStartAngle) { tmp = landmarkStartAngle>(360-i) ? landmarkStartAngle+i-360 : landmarkStartAngle-i+360; }
+            else { tmp = landmarkStartAngle+i; }
+            tmp = int(tmp>>1);
             landmarks[k].first = scan->ranges[tmp];
             landmarks[k].second = DEG2RAD*tmp;
             k++;
-            if(k>=LANDMARKS_COUNT) { k=0; }
+            if(k==LANDMARKS_COUNT) { k=0; }
             onLandmark = false;
         }
     }
@@ -83,12 +85,12 @@ void aslam::EKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
     
     Z(0) = msg->pose.pose.position.x;
     Z(1) = msg->pose.pose.position.y;
-    Z(2) = (theta<0) ? theta+ADJUST_ANGLE : theta;
+    Z(2) = aslam::EKFSlam::normalizeAngle(theta);
 
     for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
     {
         Z(3+i) = landmarks[i/2].first;
-        Z(4+i) = landmarks[i/2].second;
+        Z(4+i) = aslam::EKFSlam::normalizeAngle(landmarks[i/2].second);
     }
 
 
@@ -97,7 +99,6 @@ void aslam::EKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
     if(initX)
     {
         initX = false;
-        X = Eigen::MatrixXf::Zero(N,1);
         X(0) = Z(0);
         X(1) = Z(1);
         X(2) = Z(2);
@@ -111,10 +112,13 @@ void aslam::EKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
 
     /// \brief Update A
     ////////////////////////////////////////////////////////////
-    float R = msg->twist.twist.linear.x / msg->twist.twist.angular.z;
-    A(0,0) = R*(-std::cos(Z(2)) + std::cos(Z(2) + msg->twist.twist.angular.z));
-    A(0,1) = R*(-std::sin(Z(2)) + std::sin(Z(2) + msg->twist.twist.angular.z));
-
+    if(msg->twist.twist.angular.z)
+    {
+        float R = msg->twist.twist.linear.x / msg->twist.twist.angular.z;
+        A(0,0) = R*(-std::cos(Z(2)) + std::cos(Z(2) + msg->twist.twist.angular.z));
+        A(0,1) = R*(-std::sin(Z(2)) + std::sin(Z(2) + msg->twist.twist.angular.z));
+    }
+    
 
     ////////////////////////////////////////////////////////////
     aslam::EKFSlam::slam();
@@ -122,6 +126,16 @@ void aslam::EKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
 
     ////////////////////////////////////////////////////////////
     aslam::EKFSlam::publishLandmarks();
+}
+
+
+
+/// \brief Normalize angle
+float aslam::EKFSlam::normalizeAngle(float theta)
+{
+    theta = std::fmod(theta, 2*PI);         // move in range  0  to 2PI
+    if(theta>PI) { theta = theta - 2*PI; }  // move in range -PI to PI
+    return theta;
 }
 
 
