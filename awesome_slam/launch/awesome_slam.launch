@@ -2,7 +2,7 @@
   <arg name="model" default="$(env TURTLEBOT3_MODEL)" doc="model type [burger, waffle, waffle_pi]"/>
   <arg name="x_pos" default="0.0"/>
   <arg name="y_pos" default="0.0"/>
-  <arg name="z_pos" default="0.0"/>
+  <arg name="z_pos" default="0.5"/>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find awesome_slam)/worlds/example_1.world"/>
@@ -19,8 +19,12 @@
   <!-- <node name="ekf" type="ekf" pkg="awesome_slam"/> -->
   <!-- <node name="ukf" type="ukf" pkg="awesome_slam"/> -->
 
-  <node name="visualize" type="visualize" pkg="awesome_slam"/>
-  <node name="rviz_laser" type="rviz" pkg="rviz" args="-d $(find awesome_slam)/rviz/laser.rviz" />
-  <node name="rviz_landmarks" type="rviz" pkg="rviz" args="-d $(find awesome_slam)/rviz/landmarks.rviz" />
+  <node name="visualize" type="visualize" pkg="awesome_slam" />
+  <node name="rviz_vis" type="rviz" pkg="rviz" args="-d $(find awesome_slam)/rviz/config.rviz"/>
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+    <param name="publish_frequency" type="double" value="50.0" />
+    <param name="tf_prefix" value="" />
+  </node>
   
 </launch>

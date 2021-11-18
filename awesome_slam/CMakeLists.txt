@@ -28,10 +28,10 @@ add_executable(ekf src/ekf.cpp)
 add_dependencies(ekf ${ekf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ekf ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
-add_executable(visualize src/visualize.cpp)
-add_dependencies(visualize ${visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(visualize ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
-
 add_executable(ukf src/ukf.cpp)
 add_dependencies(ukf ${ukf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ukf ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+add_executable(visualize src/visualize.cpp)
+add_dependencies(visualize ${visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(visualize ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})

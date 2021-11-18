@@ -1,222 +1,214 @@
+/*
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2021, Arkajyoti Basak
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Arkajyoti Basak nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+
 #include <awesome_slam/ukf.h>
 
 
+/// \brief Constructor
 aslam::UKFSlam::UKFSlam():nh(ros::NodeHandle())
 { 
-    pubLandmarks = nh.advertise<awesome_slam_msgs::Landmarks>("out/landmarks", 1);
-    subLaser     = nh.subscribe("/laser/scan", 1, &aslam::UKFSlam::cbLaser, this);
     subOdom      = nh.subscribe("/odom", 1, &aslam::UKFSlam::cbOdom, this);
+    subLaser     = nh.subscribe("/laser/scan", 1, &aslam::UKFSlam::cbLaser, this);
+    pubLandmarks = nh.advertise<awesome_slam_msgs::Landmarks>("out/landmarks", 1);
+    
     aslam::UKFSlam::initialize();
 }
 
+
+/// \brief Destructor
+aslam::UKFSlam::~UKFSlam()
+{ 
+    delete lm;
+    delete param;
+}
 
 
 /// \brief Initialize matrices, and other vars
 void aslam::UKFSlam::initialize()
 {
-    onLandmark = false;
-    landmarkStartAngle = 0, t = 0;
-    initX = true, initXwithLaser = true;
-
-    a = 0.1;
-    b = 2.0;
-    k = 3-N;
-
-    lambda = std::pow(a,2)*(N+k)-N;
-    wMean0 = lambda/(N+lambda);
-    wCov0  = lambda/(N+lambda)+1-std::pow(a,2)+b;
-    wRest  = 1/(2*(N+lambda));
+    initX=true;
+    initZwithLaser=true;
     
-    P = Eigen::MatrixXf::Identity(N,N)*0.001;
-    P.block<LANDMARKS_COUNT*2,LANDMARKS_COUNT*2>(3,3) = Eigen::MatrixXf::Identity(LANDMARKS_COUNT*2,LANDMARKS_COUNT*2)*100;
-
-    R = Eigen::MatrixXf::Identity(N,N)*0.2;
+    param->Q = Eigen::MatrixXf::Zero(N,N);
+    param->R = Eigen::MatrixXf::Identity(N,N)                           * 0.2 ;
+    param->P = Eigen::MatrixXf::Identity(N,N)                           * 0.001;
     
-    Q = Eigen::MatrixXf::Zero(N,N);
-    Q.block<3,3>(0,0) = Eigen::MatrixXf::Identity(3,3)*0.001;
-    
-    for(int i=0; i<LANDMARKS_COUNT; i++){ landmarks.push_back({0.0,0.0}); }
+    param->Q.block<3,3>(0,0) = Eigen::MatrixXf::Identity(3,3)           * 0.001;
+    param->P.block<N-3,N-3>(3,3) = Eigen::MatrixXf::Identity(N-3,N-3)   * 100;
 }
 
 
-
-/// \brief TODO : Revisit and fix the naive solution
-/// Update landmarks: range and bearing from laser data
+/// \brief Update landmarks: range and bearing from laser data
 void aslam::UKFSlam::cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan) 
 {
-    initXwithLaser = false; // Updated landmarks with initial laser data
-    int tmp = 0;
-    for(int i=0; i<360; i++) 
-    {
-        if(scan->ranges[i]<=scan->range_max && !onLandmark) 
-        {
-            landmarkStartAngle = i;
-            onLandmark = true;
-        } 
-        else if(scan->ranges[i]>scan->range_max && onLandmark) 
-        {
-            if(i<landmarkStartAngle) { tmp = landmarkStartAngle>(360-i) ? landmarkStartAngle+i-360 : landmarkStartAngle-i+360; }
-            else { tmp = landmarkStartAngle+i; }
-            tmp = int(tmp>>1);
-            landmarks[t].first = scan->ranges[tmp];
-            landmarks[t].second = DEG2RAD*tmp;
-            t++;
-            if(t==LANDMARKS_COUNT) { t=0; }
-            onLandmark = false;
-        }
-    }
+    initZwithLaser=false; 
+    lm->updateLandMarks(scan);
 }
 
 
-
-/// \brief Odom callback
-void aslam::UKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
+/// \brief Update Z
+void aslam::UKFSlam::updateZ(const nav_msgs::Odometry::ConstPtr& msg)
 {
-    /// \brief Update landmarks with initial laser data first
-    ////////////////////////////////////////////////////////////
-    if(initXwithLaser) return;
-
-
-    /// \brief Update Z
-    ////////////////////////////////////////////////////////////
     float theta = std::atan2(2*(msg->pose.pose.orientation.w * msg->pose.pose.orientation.z + 
                                 msg->pose.pose.orientation.x * msg->pose.pose.orientation.y), 
                                 1-2*(std::pow(msg->pose.pose.orientation.z,2) + 
                                 std::pow(msg->pose.pose.orientation.y,2)));
 
-    Z(0) = msg->pose.pose.position.x;
-    Z(1) = msg->pose.pose.position.y;
-    Z(2) = aslam::UKFSlam::normalizeAngle(theta);
-
-    for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
+    param->Z(0) = msg->pose.pose.position.x;
+    param->Z(1) = msg->pose.pose.position.y;
+    param->Z(2) = normalizeAngle(theta);
+    for(int i=0; i<N-3; i+=2)
     {
-        Z(3+i) = landmarks[i/2].first;
-        Z(4+i) = aslam::UKFSlam::normalizeAngle(landmarks[i/2].second);
+        param->Z(3+i) = lm->range[i/2];
+        param->Z(4+i) = normalizeAngle(lm->bearing[i/2]);
     }
+}
 
-    /// \brief Initialize X with odom and laser data, will run only once
-    ////////////////////////////////////////////////////////////
+
+/// \brief Initialize X with Z
+void aslam::UKFSlam::initXwithZ()
+{
+    param->X(0) = param->Z(0);
+    param->X(1) = param->Z(1);
+    param->X(2) = param->Z(2);
+    for(int i=0; i<N-3; i+=2)
+    {
+        param->X(3+i) = param->Z(0)+param->Z(3+i)*std::cos(param->Z(2)+param->Z(4+i));
+        param->X(4+i) = param->Z(1)+param->Z(3+i)*std::sin(param->Z(2)+param->Z(4+i));
+    }
+}
+
+
+/// \brief Odom callback
+void aslam::UKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
+{
+    if(initZwithLaser) return;
+    aslam::UKFSlam::updateZ(msg);
+
     if(initX)
     {
         initX = false;
-        X(0) = Z(0);
-        X(1) = Z(1);
-        X(2) = Z(2);
-
-        for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
-        {
-            X(3+i) = Z(0)+Z(3+i)*std::cos(Z(2)+Z(4+i));
-            X(4+i) = Z(1)+Z(3+i)*std::sin(Z(2)+Z(4+i));
-        }
+        aslam::UKFSlam::initXwithZ();
     }
 
-
-    ////////////////////////////////////////////////////////////
     aslam::UKFSlam::slam(msg->twist.twist.linear.x, msg->twist.twist.angular.z);
-
-    
-    ////////////////////////////////////////////////////////////
     aslam::UKFSlam::publishLandmarks();
 }
 
 
-
-/// \brief Normalize angle
-float aslam::UKFSlam::normalizeAngle(float theta)
-{
-    theta = std::fmod(theta, 2*PI);         // move in range  0  to 2PI
-    if(theta>PI) { theta = theta - 2*PI; }  // move in range -PI to PI
-    return theta;
-}
-
-
-
 /// \brief State transition function aka A
-Eigen::Matrix<float,N,1> aslam::UKFSlam::stateTransitionFunction(const Eigen::Matrix<float,N,1>& point, float vx, float az)
+MatrixN1 aslam::UKFSlam::stateTransitionFunction(const MatrixN1& point, float vx, float az)
 {
-    Eigen::Matrix<float,N,1> _point = point;
+    MatrixN1 _point = point;
     if(vx && az)
     {
-        float R = vx / az;
-        _point(0) += R*(-std::sin(point(2)) + std::sin(point(2) + az));
-        _point(1) += R*( std::cos(point(2)) - std::cos(point(2) + az));
+        float radius = vx / az;
+        _point(0) += radius*(-std::sin(point(2)) + std::sin(point(2) + az));
+        _point(1) += radius*( std::cos(point(2)) - std::cos(point(2) + az));
         _point(2) += az;
     }
     return _point;
 }
 
 
-
 /// \brief Measurement function aka H
-Eigen::Matrix<float,N,1> aslam::UKFSlam::measurementFunction(const Eigen::Matrix<float,N,1>& point)
+MatrixN1 aslam::UKFSlam::measurementFunction(const MatrixN1& point)
 {
-    Eigen::Matrix<float,N,1> _point = point;
-    for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
+    MatrixN1 _point = point;
+    for(int i=0; i<N-3; i+=2)
     {
         _point(3+i) = std::sqrt(std::pow(point(3+i)-point(0),2) + std::pow(point(4+i)-point(1),2));
-        _point(4+i) = aslam::UKFSlam::normalizeAngle(std::atan2(point(4+i)-point(1), point(3+i)-point(0))-point(2));
+        _point(4+i) = normalizeAngle(std::atan2(point(4+i)-point(1), point(3+i)-point(0))-point(2));
     }
     return _point;
 }
 
 
-
 /// \brief Generate sigma points
-/// transform sigma points
-/// compute predict and update step
+/// Transform sigma points
+/// Compute predict and update step
 void aslam::UKFSlam::slam(float vx, float az)
 {
-    /// \brief Generate sigma points XX
-    ////////////////////////////////////////////////////////////
-    std::vector<Eigen::Matrix<float,N,1>> XX = {X};
-    Eigen::Matrix<float,N,N> chol = P.llt().matrixL();
+
+    // Generate sigma points XX
+    std::vector<MatrixN1> XX = {param->X};
+    MatrixNN chol = param->P.llt().matrixL();
     for(int i=0; i<2*N; i++)
     {   
-        if(i<N) { XX.push_back(X + (std::sqrt(N + lambda)*chol).block<1,N>(i,0).transpose()); }
-        else    { XX.push_back(X - (std::sqrt(N + lambda)*chol).block<1,N>(i-N,0).transpose()); }
+        if(i<N) { XX.push_back(param->X + (std::sqrt(N + param->lambda)*chol).block<1,N>(i,0).transpose()); }
+        else    { XX.push_back(param->X - (std::sqrt(N + param->lambda)*chol).block<1,N>(i-N,0).transpose()); }
     }
 
 
-    /// \brief PREDICT STEP
-    ////////////////////////////////////////////////////////////
-    std::vector<Eigen::Matrix<float,N,1>> YY;
+    // PREDICT STEP
+    std::vector<MatrixN1> YY;
     for(int i=0; i<=2*N; i++)  { YY.push_back(aslam::UKFSlam::stateTransitionFunction(XX[i], vx, az)); }
     
-    X = wMean0 * YY[0];
-    for(int i=1; i<=2*N; i++) { X += wRest * YY[i]; }
+    param->X = param->wMean0 * YY[0];
+    for(int i=1; i<=2*N; i++) { param->X += param->wRest * YY[i]; }
 
-    P = wCov0 * (YY[0] - X) * (YY[0] - X).transpose();
-    for(int i=1; i<=2*N; i++) { P += wRest * (YY[i] - X) * (YY[i] - X).transpose(); }
+    param->P = param->wCov0 * (YY[0] - param->X) * (YY[0] - param->X).transpose();
+    for(int i=1; i<=2*N; i++) { param->P += param->wRest * (YY[i] - param->X) * (YY[i] - param->X).transpose(); }
     
-    P = P + Q;
+    param->P = param->P + param->Q;
 
 
-
-    /// \brief UPDATE STEP
-    ////////////////////////////////////////////////////////////
-    std::vector<Eigen::Matrix<float,N,1>> ZZ;
+    // UPDATE STEP
+    std::vector<MatrixN1> ZZ;
     for(int i=0; i<=2*N; i++) { ZZ.push_back(aslam::UKFSlam::measurementFunction(YY[i])); }
     
-    muZ = wMean0 * ZZ[0];
-    for(int i=1; i<=2*N; i++) { muZ += wRest * ZZ[i]; }
+    param->muZ = param->wMean0 * ZZ[0];
+    for(int i=1; i<=2*N; i++) { param->muZ += param->wRest * ZZ[i]; }
     
-    y = Z - muZ;
+    param->y = param->Z - param->muZ;
     
-    Pz = wCov0 * (ZZ[0] - muZ) * (ZZ[0] - muZ).transpose();
-    for(int i=1; i<=2*N; i++) { Pz += wRest * (ZZ[i] - muZ) * (ZZ[i] - muZ).transpose(); }
+    param->Pz = param->wCov0 * (ZZ[0] - param->muZ) * (ZZ[0] - param->muZ).transpose();
+    for(int i=1; i<=2*N; i++) { param->Pz += param->wRest * (ZZ[i] - param->muZ) * (ZZ[i] - param->muZ).transpose(); }
     
-    Pz = Pz + R;
+    param->Pz = param->Pz + param->R;
     
-    K = wCov0 * (YY[0] - X) * (ZZ[0] - muZ).transpose();
-    for(int i=1; i<=2*N; i++) { K += wRest * (YY[i] - X) * (ZZ[i] - muZ).transpose(); }
+    param->K = param->wCov0 * (YY[0] - param->X) * (ZZ[0] - param->muZ).transpose();
+    for(int i=1; i<=2*N; i++) { param->K += param->wRest * (YY[i] - param->X) * (ZZ[i] - param->muZ).transpose(); }
     
-    K = K * Pz.inverse();
+    param->K = param->K * param->Pz.inverse();
     
-    X = X + (K * y);
+    param->X = param->X + (param->K * param->y);
     
-    P = P - (K * Pz * K.transpose());
+    param->P = param->P - (param->K * param->Pz * param->K.transpose());
 }
-
 
 
 /// \brief Publish landmarks to visualize in rviz
@@ -225,10 +217,10 @@ void aslam::UKFSlam::publishLandmarks()
     awesome_slam_msgs::Landmarks l;
     std::vector<double> _predictedLandmarkX(LANDMARKS_COUNT), _predictedLandmarkY(LANDMARKS_COUNT);
 
-    for(int i=0; i<LANDMARKS_COUNT*2; i+=2)
+    for(int i=0; i<N-3; i+=2)
     {
-        _predictedLandmarkX[i/2] = X(3+i);
-        _predictedLandmarkY[i/2] = X(4+i);
+        _predictedLandmarkX[i/2] = param->X(3+i);
+        _predictedLandmarkY[i/2] = param->X(4+i);
     }
 
     l.x = _predictedLandmarkX;
@@ -237,13 +229,13 @@ void aslam::UKFSlam::publishLandmarks()
 }
 
 
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "slam_ukf");
     ros::Time::init();
     ros::Rate rate(1);
     aslam::UKFSlam a;
+    std::cerr << "[UKF] Node started!\n";
     
     while(ros::ok()) 
     {

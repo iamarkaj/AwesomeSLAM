@@ -1,109 +1,113 @@
+/*
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2021, Arkajyoti Basak
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Arkajyoti Basak nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
 #include <ros/ros.h>
-#include <std_msgs/Header.h>
-#include <nav_msgs/MapMetaData.h>
-#include <nav_msgs/OccupancyGrid.h>
-#include <geometry_msgs/Pose.h>
+#include <awesome_slam_msgs/Landmarks.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <awesome_slam_msgs/Landmarks.h>
 
 
-class ASlamVisualize
-{
-    public:
-        ASlamVisualize():nh(ros::NodeHandle())
-        {
-            subLandmark = nh.subscribe("out/landmarks", 100, &ASlamVisualize::cbLandmarks, this);
-            pubMarker   = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 100);
-            pubMap      = nh.advertise<nav_msgs::OccupancyGrid>("out/map", 100);
+namespace aslam {
+class Visualize {
+public:
+    Visualize():nh(ros::NodeHandle()) {
+        pubMarker   = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 100);
+        subLandmark = nh.subscribe("out/landmarks", 100, &aslam::Visualize::cbLandmarks, this);
+    }
+    
+private:
+    ros::NodeHandle nh;
+    ros::Publisher pubMarker;
+    ros::Subscriber subLandmark;
+    
+
+    void cbLandmarks(const awesome_slam_msgs::LandmarksConstPtr& msg) {
+        int id = -1;
+        float originalX[] = {3.0, -3.0, 0.0};
+        float originalY[] = {0.0, 0.0, 3.0};
+        visualization_msgs::MarkerArray markerArray;
+
+        for (int i=0; i<msg->x.size(); i++) {
+            visualization_msgs::Marker _markerP = createMarker(msg->x[i], msg->y[i], ++id, 
+                                                                0.0f, 1.0f, 0.0f, ros::Duration(1/4.0));  
+            visualization_msgs::Marker _markerO = createMarker(originalX[i], originalY[i], ++id, 
+                                                                0.0f, 0.0f, 1.0f, ros::Duration());  
+            markerArray.markers.push_back(_markerP);
+            markerArray.markers.push_back(_markerO);
         }
-        
-    private:
-        ros::NodeHandle nh;
-        ros::Subscriber subLandmark;
-        ros::Publisher pubMarker, pubMap;
-        visualization_msgs::Marker* marker;
-        nav_msgs::OccupancyGrid* grid;
-        geometry_msgs::Pose* p;
+        pubMarker.publish(markerArray);
+    }
 
 
-        void cbLandmarks(const awesome_slam_msgs::LandmarksConstPtr& msg)
-        {
-            ////////////////////////////////////////////////////////////
-            visualization_msgs::MarkerArray markerArray;
-            for (int i=0; i<msg->x.size(); i++)
-            {
-                visualization_msgs::Marker _marker = createMarker(msg->x[i], msg->y[i], i);
-                markerArray.markers.push_back(_marker);
-            }
-            pubMarker.publish(markerArray);
-
-            ////////////////////////////////////////////////////////////
-            // drawMap();
-        }
-
-
-        visualization_msgs::Marker createMarker(double x, double y, int id)
-        {
-            visualization_msgs::Marker marker;
-            marker.id = id;
-            marker.header.frame_id = "base_footprint";
-            marker.header.stamp = ros::Time::now();
-            marker.type = visualization_msgs::Marker::CYLINDER;
-            marker.action = visualization_msgs::Marker::ADD;
-            marker.pose.position.x = x;
-            marker.pose.position.y = y;
-            marker.pose.position.z = 0.1;
-            marker.pose.orientation.x = 0.0;
-            marker.pose.orientation.y = 0.0;
-            marker.pose.orientation.z = 0.0;
-            marker.pose.orientation.w = 1.0;
-            marker.scale.x = 0.5;
-            marker.scale.y = 0.5;
-            marker.scale.z = 0.5;
-            marker.color.r = 0.0f;
-            marker.color.g = 1.0f;
-            marker.color.b = 0.0f;
-            marker.color.a = 1.0;
-            marker.lifetime = ros::Duration();
-            return marker;
-        }
-
-
-        // void drawMap()
-        // {
-        //     nav_msgs::OccupancyGrid* grid(new nav_msgs::OccupancyGrid());
-        //     geometry_msgs::Pose* p(new geometry_msgs::Pose());
-        //     grid->header.frame_id = "/map";
-        //     grid->header.stamp = ros::Time::now();
-        //     grid->info.map_load_time = ros::Time::now();
-        //     grid->info.resolution = 1.0;
-        //     grid->info.width = 2;
-        //     grid->info.height = 2;
-        //     p->position.x = 0.0;
-        //     p->position.y = 0.0;
-        //     p->position.z = 0.0;
-        //     p->orientation.x = 0.0;
-        //     p->orientation.y = 0.0;
-        //     p->orientation.z = 0.0;
-        //     p->orientation.w = 0.0;
-        //     grid->info.origin = *p;
-        //     std::vector<int8_t> d = {1,1,1,100};
-        //     grid->data = d;
-        //     pubMap.publish(*grid); 
-        // }
+    visualization_msgs::Marker createMarker(double x, double y, int id, 
+                                            float r, float g, float b, 
+                                            const ros::Duration& duration) const {
+        visualization_msgs::Marker marker;
+        marker.id = id;
+        marker.lifetime = duration;
+        marker.header.frame_id = "odom";
+        marker.header.stamp = ros::Time::now();
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.type = visualization_msgs::Marker::CYLINDER;
+        marker.pose.position.x = x;
+        marker.pose.position.y = y;
+        marker.pose.position.z = 0.1;
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+        marker.scale.x = 0.5;
+        marker.scale.y = 0.5;
+        marker.scale.z = 1.0;
+        marker.color.r = r;
+        marker.color.g = g;
+        marker.color.b = b;
+        marker.color.a = 1.0;
+        return marker;
+    }
 };
+}
 
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     ros::init(argc, argv, "slam_visualize");
     ros::Time::init();
     ros::Rate rate(1);
-    ASlamVisualize a;
+    aslam::Visualize a;
     
-    while(ros::ok()) 
-    {
+    while(ros::ok()) {
         ros::spinOnce();
         rate.sleep();
     }
