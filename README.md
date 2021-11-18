@@ -10,3 +10,24 @@
 EKF-SLAM and UKF-SLAM on Turtlebot3
 
 <img src="figures/teaser.gif" alt="stream" width="900"/>
+
+
+## Usage
+
+#### Open Gazebo and Rviz
+```
+roslaunch awesome_slam awesome_slam.launch
+```
+
+#### Run EKF/UKF 
+```
+rosrun awesome_slam ekf
+```
+```
+rosrun awesome_slam ukf
+```
+
+#### Launch turtlebot3_teleop
+```
+roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
+```
