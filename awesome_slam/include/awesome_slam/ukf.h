@@ -36,58 +36,67 @@
 #ifndef UKF_SLAM_H
 #define UKF_SLAM_H
 
+
 #include <awesome_slam/common.h>
 
-struct parameters {
-    MatrixNN P;
-    MatrixNN Q; 
-    MatrixNN R;
-    MatrixNN K; 
-    MatrixNN Pz; 
-    MatrixN1 X; 
-    MatrixN1 Z; 
-    MatrixN1 y;
-    MatrixN1 muZ; 
 
-    const float a=0.05;
-    const float b=2.0; 
-    const float k=3.0-N; 
-    const float lambda=std::pow(a,2)*(N+k)-N; 
-    const float wMean0=lambda/(N+lambda);
-    const float wCov0=lambda/(N+lambda)+1-std::pow(a,2)+b;
-    const float wRest=1/(2*(N+lambda));
+struct Parameters 
+{
+    VectorXd X; 
+    VectorXd Z; 
+    VectorXd weights;
+
+    MatrixXd P;
+    MatrixXd Q;
+    MatrixXd R;
+
+    double std_a;
+    double std_yaw;
+    double lambda;
+
+    Parameters() 
+    {
+        std_a = 0.2;
+        std_yaw = 0.2;
+        lambda = 3.0 - (N + 2);
+
+        // Set weight vector
+        double weight = 0.5 / (lambda + N + 2);
+        weights = VectorXd::Ones(2*N+5) * weight;
+        weights(0) = lambda / (lambda + N + 2);
+    }
 };
 
 
-namespace aslam {
-class UKFSlam : public LandMarks {
-    public:
-        UKFSlam();
-        ~UKFSlam();
+namespace aslam 
+{
+    class UKFSlam
+    {
+        public:
+            UKFSlam();
 
-    private:
-        ros::NodeHandle nh;
-        ros::Subscriber subOdom;
-        ros::Subscriber subLaser;
-        ros::Publisher pubLandmarks;
+        private:
+            ros::NodeHandle nh;
+            ros::Subscriber subOdom;
+            ros::Subscriber subLaser;
+            ros::Publisher pubLandmarks;
 
-        LandMarks* lm = new LandMarks;
-        parameters* param = new parameters;
+            LandMarks lm;
+            Parameters param;
 
-        bool initX; 
-        bool initZwithLaser;
+            bool initX; 
+            double lastTime;
+            bool initZwithLaser;
 
-        void initialize();
-        void initXwithZ();
-        void publishLandmarks();
-        void slam(float vx, float az);
-        void updateZ(const nav_msgs::Odometry::ConstPtr& msg);
-        void cbOdom(const nav_msgs::Odometry::ConstPtr& msg);
-        void cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan);
-        
-        MatrixN1 measurementFunction(const MatrixN1& point);
-        MatrixN1 stateTransitionFunction(const MatrixN1& point, float vx, float az);
+            void initialize();
+            void initXwithZ();
+            void publishLandmarks();
+            void updateZ(const nav_msgs::Odometry::ConstPtr& msg);
+            void cbOdom(const nav_msgs::Odometry::ConstPtr& msg);
+            void cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan);
+            void slam(const double& vx, const double& az, const double& deltaTime);
     };
 }
+
 
 #endif // UKF_SLAM_H

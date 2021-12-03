@@ -36,51 +36,56 @@
 #ifndef EKF_SLAM_H
 #define EKF_SLAM_H
 
+
 #include <awesome_slam/common.h>
 
-struct parameters {
-    MatrixNN I;
-    MatrixNN A;
-    MatrixNN P;
-    MatrixNN K;
-    MatrixNN H;
-    MatrixNN Q;
-    MatrixNN R;
-    MatrixNN S;
-    MatrixN1 X;
-    MatrixN1 Z;
-    MatrixN1 Y;
-    MatrixN1 W;
+
+struct Parameters 
+{
+    VectorXd X;
+    VectorXd Z;
+    VectorXd Y;
+
+    MatrixXd I;
+    MatrixXd A;
+    MatrixXd P;
+    MatrixXd K;
+    MatrixXd H;
+    MatrixXd Q;
+    MatrixXd R;
+    MatrixXd S;
 };
 
 
-namespace aslam {
-class EKFSlam {
-    public:
-        EKFSlam();
-        ~EKFSlam();
+namespace aslam 
+{
+    class EKFSlam {
+        public:
+            EKFSlam();
 
-    private:
-        ros::NodeHandle nh;
-        ros::Subscriber subOdom;
-        ros::Subscriber subLaser;
-        ros::Publisher pubLandmarks;
+        private:
+            ros::NodeHandle nh;
+            ros::Subscriber subOdom;
+            ros::Subscriber subLaser;
+            ros::Publisher pubLandmarks;
 
-        LandMarks* lm = new LandMarks;
-        parameters* param = new parameters;
+            LandMarks lm;
+            Parameters param;
 
-        bool initX; 
-        bool initZwithLaser;
-
-        void slam();
-        void updateH();
-        void initialize();
-        void initXwithZ();
-        void publishLandmarks();
-        void updateZandA(const nav_msgs::Odometry::ConstPtr& msg);
-        void cbOdom(const nav_msgs::Odometry::ConstPtr& msg);
-        void cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan);
+            bool initX; 
+            double lastTime;
+            bool initZwithLaser;
+            
+            void initialize();
+            void initXwithZ();
+            void publishLandmarks();
+            void updateH();
+            void updateZandA(const nav_msgs::Odometry::ConstPtr& msg, const double& delTime);
+            void cbOdom(const nav_msgs::Odometry::ConstPtr& msg);
+            void cbLaser(const sensor_msgs::LaserScan::ConstPtr &scan);
+            void slam(const double& vx, const double& az, const double& delTime);
     };
 }
+
 
 #endif // EKF_SLAM_H

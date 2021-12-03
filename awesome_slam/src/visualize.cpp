@@ -43,8 +43,8 @@ namespace aslam {
 class Visualize {
 public:
     Visualize():nh(ros::NodeHandle()) {
-        pubMarker   = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 100);
-        subLandmark = nh.subscribe("out/landmarks", 100, &aslam::Visualize::cbLandmarks, this);
+        pubMarker   = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 1);
+        subLandmark = nh.subscribe("out/landmarks", 1, &aslam::Visualize::cbLandmarks, this);
     }
     
 private:
@@ -55,15 +55,25 @@ private:
 
     void cbLandmarks(const awesome_slam_msgs::LandmarksConstPtr& msg) {
         int id = -1;
-        float originalX[] = {3.0, -3.0, 0.0};
-        float originalY[] = {0.0, 0.0, 3.0};
+        float originalX[] = {
+            2.0, 
+            -2.0, 
+            0.0,
+            0.0
+        };
+        float originalY[] = {
+            0.0, 
+            0.0, 
+            1.0,
+            -1.0
+        };
         visualization_msgs::MarkerArray markerArray;
 
-        for (int i=0; i<msg->x.size(); i++) {
-            visualization_msgs::Marker _markerP = createMarker(msg->x[i], msg->y[i], ++id, 
-                                                                0.0f, 1.0f, 0.0f, ros::Duration(1/4.0));  
-            visualization_msgs::Marker _markerO = createMarker(originalX[i], originalY[i], ++id, 
-                                                                0.0f, 0.0f, 1.0f, ros::Duration());  
+        int size = msg->x.size();
+        for (int i=0; i<size; i++) {
+            visualization_msgs::Marker _markerP = createMarker(msg->x[i], msg->y[i], ++id, 1.0f, 0.0f); // Predicted
+            visualization_msgs::Marker _markerO = createMarker(originalX[i], originalY[i], ++id, 0.0f, 1.0f); // Ground truth
+
             markerArray.markers.push_back(_markerP);
             markerArray.markers.push_back(_markerO);
         }
@@ -71,12 +81,10 @@ private:
     }
 
 
-    visualization_msgs::Marker createMarker(double x, double y, int id, 
-                                            float r, float g, float b, 
-                                            const ros::Duration& duration) const {
+    visualization_msgs::Marker createMarker(double x, double y, int id, float g, float b) const {
         visualization_msgs::Marker marker;
         marker.id = id;
-        marker.lifetime = duration;
+        marker.lifetime = ros::Duration();
         marker.header.frame_id = "odom";
         marker.header.stamp = ros::Time::now();
         marker.action = visualization_msgs::Marker::ADD;
@@ -91,10 +99,10 @@ private:
         marker.scale.x = 0.5;
         marker.scale.y = 0.5;
         marker.scale.z = 1.0;
-        marker.color.r = r;
+        marker.color.r = 0.0f;
         marker.color.g = g;
         marker.color.b = b;
-        marker.color.a = 1.0;
+        marker.color.a = 1.0f;
         return marker;
     }
 };
