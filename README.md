@@ -9,7 +9,15 @@
 
 EKF-SLAM and UKF-SLAM on Turtlebot3
 
-<img src="figures/teaser.gif" alt="stream" width="900"/>
+<img src="figures/cover.png" alt="stream" width="900"/>
+
+## Install
+
+```
+cd $HOME && git clone --recursive https://github.com/iamarkaj/AwesomeSLAM.git
+cd AwesomeSLAM && chmod 755 install.sh
+./install.sh
+```
 
 
 ## Usage
