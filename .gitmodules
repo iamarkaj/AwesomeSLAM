@@ -1,9 +1,9 @@
-[submodule "turtlebot"]
-	path = turtlebot
-	url = https://github.com/ROBOTIS-GIT/turtlebot3.git
 [submodule "external/turtlebot3_simulations"]
 	path = external/turtlebot3_simulations
 	url = https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git
 [submodule "external/turtlebot3"]
 	path = external/turtlebot3
 	url = https://github.com/ROBOTIS-GIT/turtlebot3.git
+[submodule "external/turtlebot3_msgs"]
+	path = external/turtlebot3_msgs
+	url = https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git

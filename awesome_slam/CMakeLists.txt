@@ -24,14 +24,22 @@ install(DIRECTORY
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-add_executable(ekf src/ekf.cpp)
+add_executable(gazebo_spawn src/gazebo_spawn/gazebo_spawn.cpp)
+add_dependencies(gazebo_spawn ${gazebo_spawn_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(gazebo_spawn ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+add_executable(sensor_landmark src/sensor_landmark/sensor_landmark.cpp)
+add_dependencies(sensor_landmark ${sensor_landmark_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(sensor_landmark ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+add_executable(rviz_visualize src/rviz_visualize/rviz_visualize.cpp)
+add_dependencies(rviz_visualize ${rviz_visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(rviz_visualize ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+add_executable(ekf src/ekf/ekf.cpp)
 add_dependencies(ekf ${ekf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ekf ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
-add_executable(ukf src/ukf.cpp)
+add_executable(ukf src/ukf/ukf.cpp)
 add_dependencies(ukf ${ukf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ukf ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
-
-add_executable(visualize src/visualize.cpp)
-add_dependencies(visualize ${visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(visualize ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
