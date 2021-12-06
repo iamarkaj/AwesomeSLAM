@@ -3,7 +3,7 @@
 	url = https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git
 [submodule "external/turtlebot3"]
 	path = external/turtlebot3
-	url = https://github.com/ROBOTIS-GIT/turtlebot3.git
+	url = https://github.com/iamarkaj/turtlebot3.git
 [submodule "external/turtlebot3_msgs"]
 	path = external/turtlebot3_msgs
 	url = https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git
