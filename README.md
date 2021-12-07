@@ -19,6 +19,49 @@ cd AwesomeSLAM && chmod 755 install.sh
 ./install.sh
 ```
 
+## awesome_slam (file structure)
+
+```
+├── CMakeLists.txt
+├── config
+│   ├── config.rviz
+│   └── landmarks.yaml
+├── include
+│   └── awesome_slam
+│       ├── common.h
+│       ├── config.h
+│       ├── structures.h
+│       └── tools.h
+├── launch
+│   └── awesome_slam.launch
+├── models
+│   ├── awesome_boundary
+│   │   ├── model.config
+│   │   └── model.sdf
+│   └── awesome_cylinder
+│       ├── model.config
+│       └── model.sdf
+├── package.xml
+├── src
+│   ├── ekf
+│   │   ├── ekf.cpp
+│   │   └── ekf.h
+│   ├── gazebo_spawn
+│   │   ├── gazebo_spawn.cpp
+│   │   └── gazebo_spawn.h
+│   ├── rviz_visualize
+│   │   ├── rviz_visualize.cpp
+│   │   └── rviz_visualize.h
+│   ├── sensor_landmark
+│   │   ├── sensor_landmark.cpp
+│   │   └── sensor_landmark.h
+│   └── ukf
+│       ├── ukf.cpp
+│       └── ukf.h
+└── worlds
+    └── awesome_slam.world
+```
+
 
 ## Usage
 
