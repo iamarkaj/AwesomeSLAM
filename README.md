@@ -1,4 +1,4 @@
-# AwesomeSLAM ROS package *(WIP)*
+# Awesome SLAM
 
 ![](https://img.shields.io/badge/Ubuntu-20.04-red)
 ![](https://img.shields.io/badge/ROS1-Noetic-blue)
@@ -64,6 +64,11 @@ cd AwesomeSLAM && chmod 755 install.sh
 
 
 ## Usage
+
+#### Edit landmark positions at
+```
+awesome_slam/config/landmarks.yaml
+```
 
 #### Open Gazebo and Rviz
 ```
