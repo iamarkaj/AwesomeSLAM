@@ -47,11 +47,15 @@ struct Point
 
     Point()
     {
-        point << 0.0, 0.0;
     }
 
-    Point(const float &x, const float &y) : point(x, y)
+    Point(const float &a, const float &b) : point(a, b)
     {
+    }
+
+    void assign(const float &a, const float &b)
+    {
+        point << a, b;
     }
 
     void assign(const Point &P)
@@ -59,9 +63,9 @@ struct Point
         point << P.point(0), P.point(1);
     }
 
-    void assign(const float &a, const float &b)
+    float operator()(const uint8_t i) const
     {
-        point << a, b;
+        return point(i);
     }
 
     float distance(const Point &P) const
@@ -70,30 +74,24 @@ struct Point
         return ret;
     }
 
-    float operator()(uint8_t i) const
-    {
-        return point(i);
-    }
-
     bool operator==(const Point &P) const
     {
-        float d = distance(P);
-        bool ret = d < MIN_DIST_THRESH;
+        float dist = EulerDistance(point, P.point);
+        bool ret = dist < MIN_DIST_THRESH;
         return ret;
     }
 };
 
 struct LaserData
 {
-    float range = 0.0;
-
-    float bearing = 0.0;
+    float range;
+    float bearing;
 
     LaserData()
     {
     }
 
-    LaserData(const float &r, const float &b) : range(r), bearing(b)
+    LaserData(const float &a, const float &b) : range(a), bearing(b)
     {
     }
 
@@ -115,24 +113,14 @@ struct LaserData
 
 struct Circle
 {
-    Point center;
+    Eigen::Vector2d center;
 
     Circle()
     {
     }
 
-    Circle(const float &x, const float &y) : center(x, y)
+    Circle(const float &a, const float &b) : center(a, b)
     {
-    }
-
-    void assign(const Point &P)
-    {
-        center.assign(P);
-    }
-
-    void assign(const float &a, const float &b)
-    {
-        center.assign(a, b);
     }
 
     LaserData toLaserData() const

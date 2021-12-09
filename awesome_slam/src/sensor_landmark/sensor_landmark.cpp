@@ -47,8 +47,6 @@ aslam::LandMarks::LandMarks() : nh(ros::NodeHandle())
 /// \brief Initialize
 void aslam::LandMarks::initialize()
 {
-    threshold = 0.5;
-
     // Create sin and cos maps to optimize performance
     for (uint16_t theta = 0; theta < 360; ++theta)
     {
@@ -60,68 +58,76 @@ void aslam::LandMarks::initialize()
 /// \brief Laser callback
 void aslam::LandMarks::callback(const sensor_msgs::LaserScan::ConstPtr &msg)
 {
+    Point p1, p2;
     uint16_t i = 0;
-
-    // Create a new cluster
+    LaserData laserData;
+    Circle circleResult;
     std::vector<Point> cluster;
-
-    while (i < 360)
-    {
-        // Clear existing cluster
-        cluster.clear();
-
-        // Put the i th point into a new vector
-        cluster.push_back(Point(bearing2pose(i, msg->ranges.at(i))));
-        i++;
-
-        while (i < 360)
-        {
-            // If distance between two points are less than
-            // the threshold, then they are the same cluster
-            float dist =
-                Point(bearing2pose(i - 1, msg->ranges.at(i - 1))).distance(Point(bearing2pose(i, msg->ranges.at(i))));
-            if (dist < threshold)
-            {
-                cluster.push_back(Point(bearing2pose(i, msg->ranges.at(i))));
-                i++;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        // Insert the vector into pointClusters
-        pointClusters.push_back(cluster);
-    }
-
-    if (pointClusters.front().front().distance(pointClusters.back().back()) < threshold)
-    {
-        pointClusters.back().insert(pointClusters.back().end(), pointClusters.front().begin(),
-                                    pointClusters.front().end());
-        pointClusters.erase(pointClusters.begin());
-    }
-
-    pointClusters.erase(std::remove_if(pointClusters.begin(), pointClusters.end(),
-                                       [](const std::vector<Point> &x) { return x.size() <= 3; }),
-                        pointClusters.end());
-
+    std::vector<Point> firstCluster;
     std::vector<double> measuredLMx;
     std::vector<double> measuredLMy;
 
-    for (auto clu : pointClusters)
-    {
-        if (circleClassification(clu))
-        {
-            Circle circleResult = circleFitting(clu);
-            LaserData data = circleResult.toLaserData();
+    p1 = bearing2pose(0, msg->ranges[0]);
+    p2 = bearing2pose(359, msg->ranges[359]);
 
-            measuredLMx.push_back(data.range);
-            measuredLMy.push_back(data.bearing);
+    // First and last point belong to same cluster
+    if (p1.distance(p2) < 0.5)
+    {
+        // Store them to use it later
+        firstCluster.push_back(p1);
+
+        while (i < 360 && p1.distance(p2) < 0.5)
+        {
+            p2 = bearing2pose(i, msg->ranges[i++]);
+            firstCluster.push_back(p2);
+            p1 = p2;
         }
     }
 
-    pointClusters.clear();
+    // Sanity check
+    assert(i < 359 && "[ERROR]");
+
+    p1 = bearing2pose(i, msg->ranges[i++]);
+    cluster.push_back(p1);
+
+    while (i < 360)
+    {
+        p2 = bearing2pose(i, msg->ranges[i++]);
+
+        if (p1.distance(p2) < 0.5)
+        {
+            cluster.push_back(p2);
+        }
+        else if (cluster.size())
+        {
+            // Ignore clusters with fewer points
+            if (cluster.size() > 3 && circleClassification(cluster))
+            {
+                if (i == 360)
+                {
+                    // Preallocate memory to speed up
+                    std::vector<Point> lastAndFirstCluster;
+                    lastAndFirstCluster.reserve(cluster.size() + firstCluster.size());
+                    lastAndFirstCluster.insert(lastAndFirstCluster.end(), cluster.begin(), cluster.end());
+                    lastAndFirstCluster.insert(lastAndFirstCluster.end(), firstCluster.begin(), firstCluster.end());
+
+                    circleResult = circleFitting(lastAndFirstCluster);
+                }
+                else
+                {
+                    circleResult = circleFitting(cluster);
+                }
+                
+                laserData = circleResult.toLaserData();
+                measuredLMx.push_back(laserData.range);
+                measuredLMy.push_back(laserData.bearing);
+            }
+
+            cluster.clear();
+        }
+
+        p1 = p2;
+    }
 
     awesome_slam_msgs::Landmarks L;
     L.x = measuredLMx;
@@ -132,7 +138,7 @@ void aslam::LandMarks::callback(const sensor_msgs::LaserScan::ConstPtr &msg)
 }
 
 /// \brief Bearing to Pose
-inline Point aslam::LandMarks::bearing2pose(const int16_t &theta, const float &dist) const
+inline Point aslam::LandMarks::bearing2pose(const int16_t theta, const float &dist) const
 {
     float x = dist * cosMap[theta];
     float y = dist * sinMap[theta];
@@ -145,6 +151,7 @@ inline Point aslam::LandMarks::bearing2pose(const int16_t &theta, const float &d
 ///     scan data in a Player driver, ICRA 2005
 bool aslam::LandMarks::circleClassification(const std::vector<Point> &points) const
 {
+    Point P;
     float sum = 0.0;
     int size = points.size();
     Point P1 = points.front();
@@ -153,7 +160,7 @@ bool aslam::LandMarks::circleClassification(const std::vector<Point> &points) co
 
     for (int i = 1; i < size - 1; i++)
     {
-        Point P = points.at(i);
+        P = points[i];
 
         // Calculate the angle using cosine law
         float c = P1.distance(P2);
@@ -174,8 +181,7 @@ bool aslam::LandMarks::circleClassification(const std::vector<Point> &points) co
         variance += pow(val - mean, 2);
     }
 
-    variance = variance / 5.0;
-    std = sqrt(variance);
+    std = sqrt(variance / 5.0);
 
     if (std < 0.4 && mean > 1.5 && mean < 3.0)
     {
@@ -189,8 +195,11 @@ bool aslam::LandMarks::circleClassification(const std::vector<Point> &points) co
 ///     A. Al-Sharadqah and N. Chernov, Error Analysis for Circle Fitting
 ///     Algorithms, Electronic Journal of Statistics (2009), Volume 3 p
 ///     886-911
-Circle aslam::LandMarks::circleFitting(std::vector<Point> &points)
+Circle aslam::LandMarks::circleFitting(const std::vector<Point> &points_)
 {
+    std::vector<Point> points;
+    points = points_;
+
     float xMean = 0.0;
     float yMean = 0.0;
     float zMean = 0.0;
@@ -212,7 +221,7 @@ Circle aslam::LandMarks::circleFitting(std::vector<Point> &points)
 
     // Compute z and zMean
     std::vector<float> z;
-    for (Point &pt : points)
+    for (const Point &pt : points)
     {
         z.push_back(pt(0) * pt(0) + pt(1) * pt(1));
     }
@@ -231,7 +240,7 @@ Circle aslam::LandMarks::circleFitting(std::vector<Point> &points)
     for (int i = 0; i < size; i++)
     {
         VectorXd vec(4);
-        vec << z.at(i), points.at(i)(0), points.at(i)(1), 1;
+        vec << z[i], points[i](0), points[i](1), 1;
         Z.row(i) = vec.transpose();
     }
 
@@ -239,41 +248,45 @@ Circle aslam::LandMarks::circleFitting(std::vector<Point> &points)
     Eigen::Matrix4d H, H_inv;
 
     H << 8 * zMean, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0;
-
     H_inv << 0, 0, 0, (1.0 / 2.0), 0, 1, 0, 0, 0, 0, 1, 0, (1.0 / 2.0), 0, 0, -2 * zMean;
 
-    Eigen::JacobiSVD<MatrixXd> svd(Z, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    VectorXd singularValues = svd.singularValues();
     MatrixXd A;
+    VectorXd singularValues;
+    Eigen::JacobiSVD<MatrixXd> svd(Z, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    
+    singularValues = svd.singularValues();
 
     auto U = svd.matrixU();
     auto V = svd.matrixV();
 
     if (singularValues(3) > 10e-12)
     {
-        Eigen::Matrix<double, 4, 4> sigma = singularValues.array().matrix().asDiagonal();
-        MatrixXd Y = V * sigma * V.transpose();
+        float smallest_id = 0;
+        float smallest_ev = 99999;
 
-        // Form Q matrix
-        MatrixXd Q = Y * H_inv * Y;
+        VectorXd ev;
+        MatrixXd Y, Q, A_star;
+        Eigen::Matrix<double, 4, 4> sigma;
+
+        sigma = singularValues.array().matrix().asDiagonal();
+        Y = V * sigma * V.transpose();
+        Q = Y * H_inv * Y;
 
         // Find the eigenvector corresponding to the smallest positive eigenvalue
         Eigen::SelfAdjointEigenSolver<MatrixXd> es(Q);
-        VectorXd ev = es.eigenvalues();
-
-        float smallest_ev = 99999;
-        float smallest_id = 0;
+        
+        ev = es.eigenvalues();
 
         for (int i = 0; i < ev.size(); i++)
         {
             if (ev[i] > 0 && ev[i] < smallest_ev)
             {
-                smallest_ev = ev[i];
                 smallest_id = i;
+                smallest_ev = ev[i];
             }
         }
 
-        MatrixXd A_star = es.eigenvectors().col(smallest_id);
+        A_star = es.eigenvectors().col(smallest_id);
         A = Y.colPivHouseholderQr().solve(A_star);
     }
     else

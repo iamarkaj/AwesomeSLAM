@@ -46,7 +46,8 @@ using Eigen::VectorXd;
 VectorXd stateTransitionFunction(const uint32_t N, const VectorXd &point, const float &vx, const float &az,
                                  const float &deltaTime)
 {
-    VectorXd P = point.head(N);
+    VectorXd P;
+    P = point.head(N);
 
     // Avoid division by 0
     if (std::fabs(az) > 0.001)
@@ -77,9 +78,10 @@ VectorXd stateTransitionFunction(const uint32_t N, const VectorXd &point, const 
 /// \brief Measurement function aka h
 VectorXd measurementFunction(const uint32_t N, const VectorXd &point)
 {
-    VectorXd P = point;
+    VectorXd P;
+    P = point;
 
-    for (int i = 0; i < N - 3; i += 2)
+    for (uint32_t i = 0; i < N - 3; i += 2)
     {
         P(3 + i) = std::sqrt(std::pow(point(3 + i) - point(0), 2) + std::pow(point(4 + i) - point(1), 2));
         P(4 + i) = std::atan2(point(4 + i) - point(1), point(3 + i) - point(0)) - point(2);
@@ -91,13 +93,13 @@ VectorXd measurementFunction(const uint32_t N, const VectorXd &point)
 /// \brief Convert X matrix to ROS msg
 awesome_slam_msgs::Landmarks convertToLandmarkMsg(const uint32_t N, const VectorXd &X)
 {
-    std::vector<double> predX((N - 3) / 2);
-    std::vector<double> predY((N - 3) / 2);
+    std::vector<double> predX;
+    std::vector<double> predY;
 
-    for (int i = 0; i < N - 3; i += 2)
+    for (uint32_t i = 0; i < N - 3; i += 2)
     {
-        predX[i / 2] = X(3 + i);
-        predY[i / 2] = X(4 + i);
+        predX.push_back(X(3 + i));
+        predY.push_back(X(4 + i));
     }
 
     awesome_slam_msgs::Landmarks L;

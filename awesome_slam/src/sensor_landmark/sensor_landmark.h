@@ -60,17 +60,14 @@ class LandMarks
     ros::Subscriber subLaser;
     ros::Publisher pubLandmarks;
 
-    float threshold;
     std::vector<float> sinMap;
     std::vector<float> cosMap;
-    std::vector<std::vector<Point>> pointClusters;
 
     void initialize();
+    Circle circleFitting(const std::vector<Point> &points_);
     void callback(const sensor_msgs::LaserScan::ConstPtr &msg);
-
-    inline Point bearing2pose(const int16_t &theta, const float &dist) const;
     bool circleClassification(const std::vector<Point> &points) const;
-    Circle circleFitting(std::vector<Point> &points);
+    inline Point bearing2pose(const int16_t theta, const float &dist) const;
 };
 } // namespace aslam
 
