@@ -36,295 +36,277 @@
 #include "ekf.h"
 
 /// \brief Constructor
-aslam::EKFSlam::EKFSlam() : nh(ros::NodeHandle())
-{
-    subOdom = nh.subscribe("/odom", 1, &aslam::EKFSlam::cbOdom, this);
-    subSensorLM = nh.subscribe("/out/landmarks/sensor", 1, &aslam::EKFSlam::cbSensorLandmark, this);
-    pubLandmarks = nh.advertise<awesome_slam_msgs::Landmarks>("out/landmarks/kalman", 1);
+aslam::EKFSlam::EKFSlam() : nh(ros::NodeHandle()) {
+  subOdom = nh.subscribe("/odom", 1, &aslam::EKFSlam::cbOdom, this);
+  subSensorLM = nh.subscribe("/out/landmarks/sensor", 1,
+                             &aslam::EKFSlam::cbSensorLandmark, this);
+  pubLandmarks =
+      nh.advertise<awesome_slam_msgs::Landmarks>("out/landmarks/kalman", 1);
 
-    aslam::EKFSlam::initialize();
+  aslam::EKFSlam::initialize();
 }
 
 /// \brief Initialize
-void aslam::EKFSlam::initialize()
-{
-    N = 3;
-    initX = true;
-    initZwithLaser = true;
-    lastTime = ros::Time::now().toSec();
+void aslam::EKFSlam::initialize() {
+  N = 3;
+  initX = true;
+  initZwithLaser = true;
+  lastTime = ros::Time::now().toSec();
 
-    param.X = VectorXd::Zero(N);
-    param.Z = VectorXd::Zero(N);
-    param.Q = MatrixXd::Zero(N, N);
+  param.X = VectorXd::Zero(N);
+  param.Z = VectorXd::Zero(N);
+  param.Q = MatrixXd::Zero(N, N);
 
-    param.A = MatrixXd::Identity(N, N);
-    param.H = MatrixXd::Identity(N, N);
-    param.I = MatrixXd::Identity(N, N);
+  param.A = MatrixXd::Identity(N, N);
+  param.H = MatrixXd::Identity(N, N);
+  param.I = MatrixXd::Identity(N, N);
 
-    param.R = MatrixXd::Identity(N, N) * 0.2;
-    param.P = MatrixXd::Identity(N, N) * 0.001;
+  param.R = MatrixXd::Identity(N, N) * 0.2;
+  param.P = MatrixXd::Identity(N, N) * 0.001;
 
-    param.Q(0, 0) = 0.001;
-    param.Q(1, 1) = 0.001;
-    param.Q(2, 2) = 0.001;
-    param.P.bottomRightCorner(N - 3, N - 3) = MatrixXd::Identity(N - 3, N - 3) * 10000.0;
+  param.Q(0, 0) = 0.001;
+  param.Q(1, 1) = 0.001;
+  param.Q(2, 2) = 0.001;
+  param.P.bottomRightCorner(N - 3, N - 3) =
+      MatrixXd::Identity(N - 3, N - 3) * 10000.0;
 }
 
 /// \brief Odom callback
-void aslam::EKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr &msg)
-{
-    if (initZwithLaser)
-        return;
+void aslam::EKFSlam::cbOdom(const nav_msgs::Odometry::ConstPtr &msg) {
+  if (initZwithLaser) return;
 
-    // Calculate delta time
-    float deltaTime = std::min(ros::Time::now().toSec() - lastTime, 1.0);
-    lastTime = ros::Time::now().toSec();
+  // Calculate delta time
+  float deltaTime = std::min(ros::Time::now().toSec() - lastTime, 1.0);
+  lastTime = ros::Time::now().toSec();
 
-    // Update Z and A with new measurement data
-    aslam::EKFSlam::updateZandA(msg, deltaTime);
+  // Update Z and A with new measurement data
+  aslam::EKFSlam::updateZandA(msg, deltaTime);
 
-    // Initialize X with Z only once
-    if (initX)
-    {
-        initX = false;
-        param.X = param.Z;
-    }
+  // Initialize X with Z only once
+  if (initX) {
+    initX = false;
+    param.X = param.Z;
+  }
 
-    // SLAM
-    aslam::EKFSlam::slam(msg->twist.twist.linear.x, msg->twist.twist.angular.z, deltaTime);
+  // SLAM
+  aslam::EKFSlam::slam(msg->twist.twist.linear.x, msg->twist.twist.angular.z,
+                       deltaTime);
 
-    // Publish landmarks to visualize in Rviz
-    awesome_slam_msgs::Landmarks L = convertToLandmarkMsg(N, param.X);
-    pubLandmarks.publish(L);
+  // Publish landmarks to visualize in Rviz
+  awesome_slam_msgs::Landmarks L = convertToLandmarkMsg(N, param.X);
+  pubLandmarks.publish(L);
 }
 
 /// \brief Update landmarks: range and bearing from laser data
-void aslam::EKFSlam::cbSensorLandmark(const awesome_slam_msgs::Landmarks::ConstPtr &msg)
-{
-    initZwithLaser = false;
-    sensorMeasuredLM.clear();
-    uint32_t size = msg->x.size();
+void aslam::EKFSlam::cbSensorLandmark(
+    const awesome_slam_msgs::Landmarks::ConstPtr &msg) {
+  initZwithLaser = false;
+  sensorMeasuredLM.clear();
+  uint32_t size = msg->x.size();
 
-    LaserData data;
-    for (uint32_t i = 0; i < size; ++i)
-    {
-        data.assign(msg->x[i], msg->y[i]);
-        sensorMeasuredLM.push_back(data);
-    }
+  LaserData data;
+  for (uint32_t i = 0; i < size; ++i) {
+    data.assign(msg->x[i], msg->y[i]);
+    sensorMeasuredLM.push_back(data);
+  }
 }
 
 /// \brief Update H
-void aslam::EKFSlam::updateH()
-{
-    for (uint32_t i = 0; i < N - 3; i += 2)
-    {
-        float hyp = std::pow(param.X(3 + i) - param.X(0), 2) + std::pow(param.X(4 + i) - param.X(1), 2);
-        float dist = std::sqrt(hyp);
+void aslam::EKFSlam::updateH() {
+  for (uint32_t i = 0; i < N - 3; i += 2) {
+    float hyp = std::pow(param.X(3 + i) - param.X(0), 2) +
+                std::pow(param.X(4 + i) - param.X(1), 2);
+    float dist = std::sqrt(hyp);
 
-        param.H(3 + i, 0) = (-param.X(3 + i) + param.X(0)) / dist;
-        param.H(4 + i, 0) = -(-param.X(4 + i) + param.X(1)) / hyp;
-        param.H(3 + i, 1) = (-param.X(4 + i) + param.X(1)) / dist;
-        param.H(4 + i, 1) = (-param.X(3 + i) + param.X(0)) / hyp;
-        param.H(4 + i, 2) = -1;
-        param.H(3 + i, 3 + i) = -(-param.X(3 + i) + param.X(0)) / dist;
-        param.H(3 + i, 4 + i) = -(-param.X(4 + i) + param.X(1)) / dist;
-        param.H(4 + i, 3 + i) = (-param.X(4 + i) + param.X(1)) / hyp;
-        param.H(4 + i, 4 + i) = -(-param.X(3 + i) + param.X(0)) / hyp;
-    }
+    param.H(3 + i, 0) = (-param.X(3 + i) + param.X(0)) / dist;
+    param.H(4 + i, 0) = -(-param.X(4 + i) + param.X(1)) / hyp;
+    param.H(3 + i, 1) = (-param.X(4 + i) + param.X(1)) / dist;
+    param.H(4 + i, 1) = (-param.X(3 + i) + param.X(0)) / hyp;
+    param.H(4 + i, 2) = -1;
+    param.H(3 + i, 3 + i) = -(-param.X(3 + i) + param.X(0)) / dist;
+    param.H(3 + i, 4 + i) = -(-param.X(4 + i) + param.X(1)) / dist;
+    param.H(4 + i, 3 + i) = (-param.X(4 + i) + param.X(1)) / hyp;
+    param.H(4 + i, 4 + i) = -(-param.X(3 + i) + param.X(0)) / hyp;
+  }
 }
 
 /// \brief Update Z and A
-void aslam::EKFSlam::updateZandA(const nav_msgs::Odometry::ConstPtr &msg, const float &deltaTime)
-{
-    float theta =
-        std::atan2(2 * (msg->pose.pose.orientation.w * msg->pose.pose.orientation.z +
-                        msg->pose.pose.orientation.x * msg->pose.pose.orientation.y),
-                   1 - 2 * (std::pow(msg->pose.pose.orientation.z, 2) + std::pow(msg->pose.pose.orientation.y, 2)));
+void aslam::EKFSlam::updateZandA(const nav_msgs::Odometry::ConstPtr &msg,
+                                 const float &deltaTime) {
+  float theta = std::atan2(
+      2 * (msg->pose.pose.orientation.w * msg->pose.pose.orientation.z +
+           msg->pose.pose.orientation.x * msg->pose.pose.orientation.y),
+      1 - 2 * (std::pow(msg->pose.pose.orientation.z, 2) +
+               std::pow(msg->pose.pose.orientation.y, 2)));
 
-    param.Z(0) = msg->pose.pose.position.x;
-    param.Z(1) = msg->pose.pose.position.y;
-    param.Z(2) = theta;
+  param.Z(0) = msg->pose.pose.position.x;
+  param.Z(1) = msg->pose.pose.position.y;
+  param.Z(2) = theta;
 
-    // Landmark Data Association
-    std::vector<LaserData> NewLandmarkList;
+  // Landmark Data Association
+  std::vector<LaserData> NewLandmarkList;
 
-    for (LaserData &data : sensorMeasuredLM)
-    {
-        // Normalize
-        data.bearing = normalizeAngle(data.bearing);
+  for (LaserData &data : sensorMeasuredLM) {
+    // Normalize
+    data.bearing = normalizeAngle(data.bearing);
 
-        // Initially send all landmark to waiting list
-        if (N == 3)
-        {
-            aslam::EKFSlam::sendToNewLandmarkWaiting(data);
-            continue;
-        }
-
-        // Find nearest neighbour
-        int corrIdx = 0;
-        Point oldLM(param.X(3), param.X(4));
-        Point newLM = data.toPoint(param.Z);
-        float mindist = newLM.distance(oldLM);
-        for (uint32_t j = 2; j < N - 3; j += 2)
-        {
-            oldLM.assign(param.X(3 + j), param.X(4 + j));
-            float dist = newLM.distance(oldLM);
-            if (dist < mindist)
-            {
-                corrIdx = j;
-                mindist = dist;
-            }
-        }
-
-        if (mindist < MIN_DIST_THRESH)
-        {
-            // Associate with the correct index
-            param.Z(3 + corrIdx) = data.range;
-            param.Z(4 + corrIdx) = data.bearing;
-            continue;
-        }
-        else
-        {
-            // If landmark cannot be associated with any current landmark
-            aslam::EKFSlam::sendToNewLandmarkWaiting(data);
-        }
+    // Initially send all landmark to waiting list
+    if (N == 3) {
+      aslam::EKFSlam::sendToNewLandmarkWaiting(data);
+      continue;
     }
 
-    // Push landmarks from NewLandmarkWaitingList to NewLandmarkList
-    for (auto &waitingData : NewLandmarkWaitingList)
-    {
-        if (waitingData.second >= MIN_LANDMARK_OCC)
-        {
-            NewLandmarkList.push_back(waitingData.first);
-            waitingData.second = -1;
-        }
+    // Find nearest neighbour
+    int corrIdx = 0;
+    Point oldLM(param.X(3), param.X(4));
+    Point newLM = data.toPoint(param.Z);
+    float mindist = newLM.distance(oldLM);
+    for (uint32_t j = 2; j < N - 3; j += 2) {
+      oldLM.assign(param.X(3 + j), param.X(4 + j));
+      float dist = newLM.distance(oldLM);
+      if (dist < mindist) {
+        corrIdx = j;
+        mindist = dist;
+      }
     }
 
-    if (NewLandmarkList.size())
-    {
-        aslam::EKFSlam::addNewLandmark(NewLandmarkList);
-        NewLandmarkList.clear();
+    if (mindist < MIN_DIST_THRESH) {
+      // Associate with the correct index
+      param.Z(3 + corrIdx) = data.range;
+      param.Z(4 + corrIdx) = data.bearing;
+      continue;
+    } else {
+      // If landmark cannot be associated with any current landmark
+      aslam::EKFSlam::sendToNewLandmarkWaiting(data);
     }
+  }
 
-    // Update A
-    if (msg->twist.twist.linear.x && msg->twist.twist.angular.z)
-    {
-        float deltaTheta = msg->twist.twist.angular.z * deltaTime;
-        float r = msg->twist.twist.linear.x / msg->twist.twist.angular.z;
-        param.A(0, 0) = r * (-std::cos(param.Z(2)) + std::cos(param.Z(2) + deltaTheta));
-        param.A(1, 0) = r * (-std::sin(param.Z(2)) + std::sin(param.Z(2) + deltaTheta));
+  // Push landmarks from NewLandmarkWaitingList to NewLandmarkList
+  for (auto &waitingData : NewLandmarkWaitingList) {
+    if (waitingData.second >= MIN_LANDMARK_OCC) {
+      NewLandmarkList.push_back(waitingData.first);
+      waitingData.second = -1;
     }
+  }
+
+  if (NewLandmarkList.size()) {
+    aslam::EKFSlam::addNewLandmark(NewLandmarkList);
+    NewLandmarkList.clear();
+  }
+
+  // Update A
+  if (msg->twist.twist.linear.x && msg->twist.twist.angular.z) {
+    float deltaTheta = msg->twist.twist.angular.z * deltaTime;
+    float r = msg->twist.twist.linear.x / msg->twist.twist.angular.z;
+    param.A(0, 0) =
+        r * (-std::cos(param.Z(2)) + std::cos(param.Z(2) + deltaTheta));
+    param.A(1, 0) =
+        r * (-std::sin(param.Z(2)) + std::sin(param.Z(2) + deltaTheta));
+  }
 }
 
 /// \brief If point is already present in NewLandmarkWaitingList increment
 ///        its count else push as new landmark in NewLandmarkWaitingList
-void aslam::EKFSlam::sendToNewLandmarkWaiting(const LaserData &data)
-{
-    // Push if NewLandmarkWaitingList is emtpy
-    if (NewLandmarkWaitingList.empty())
-    {
-        NewLandmarkWaitingList.push_back({data, 1});
-        return;
-    }
+void aslam::EKFSlam::sendToNewLandmarkWaiting(const LaserData &data) {
+  // Push if NewLandmarkWaitingList is emtpy
+  if (NewLandmarkWaitingList.empty()) {
+    NewLandmarkWaitingList.push_back({data, 1});
+    return;
+  }
 
-    // Find nearest neighbour
-    uint32_t corrIdx = 0;
-    Point newLM = data.toPoint(param.Z);
-    Point oldLM = NewLandmarkWaitingList[0].first.toPoint(param.Z);
-    float mindist = newLM.distance(oldLM);
-    uint32_t size = NewLandmarkWaitingList.size();
-    for (uint32_t i = 1; i < size; ++i)
-    {
-        oldLM.assign(NewLandmarkWaitingList[i].first.toPoint(param.Z));
-        float dist = newLM.distance(oldLM);
-        if (dist < mindist)
-        {
-            corrIdx = i;
-            mindist = dist;
-        }
+  // Find nearest neighbour
+  uint32_t corrIdx = 0;
+  Point newLM = data.toPoint(param.Z);
+  Point oldLM = NewLandmarkWaitingList[0].first.toPoint(param.Z);
+  float mindist = newLM.distance(oldLM);
+  uint32_t size = NewLandmarkWaitingList.size();
+  for (uint32_t i = 1; i < size; ++i) {
+    oldLM.assign(NewLandmarkWaitingList[i].first.toPoint(param.Z));
+    float dist = newLM.distance(oldLM);
+    if (dist < mindist) {
+      corrIdx = i;
+      mindist = dist;
     }
+  }
 
-    if (mindist < MIN_DIST_THRESH)
-    {
-        // Increment its count
-        NewLandmarkWaitingList[corrIdx].second++;
-    }
-    else
-    {
-        // Push as new landmark
-        NewLandmarkWaitingList.push_back({data, 1});
-    }
+  if (mindist < MIN_DIST_THRESH) {
+    // Increment its count
+    NewLandmarkWaitingList[corrIdx].second++;
+  } else {
+    // Push as new landmark
+    NewLandmarkWaitingList.push_back({data, 1});
+  }
 }
 
-void aslam::EKFSlam::addNewLandmark(const std::vector<LaserData> &NewLandmarkList)
-{
-    uint32_t cacheN = N;
-    uint32_t size = NewLandmarkList.size();
+void aslam::EKFSlam::addNewLandmark(
+    const std::vector<LaserData> &NewLandmarkList) {
+  uint32_t cacheN = N;
+  uint32_t size = NewLandmarkList.size();
 
-    // New N
-    N += 2 * size;
+  // New N
+  N += 2 * size;
 
-    if (N >= MAX_LANDMARK_COUNT)
-    {
-        std::cerr << "[WARN] MAXIMUM LANDMARK COUNT IS SET TO " << MAX_LANDMARK_COUNT << "\n";
-        N = cacheN;
-        return;
-    }
+  if (N >= MAX_LANDMARK_COUNT) {
+    std::cerr << "[WARN] MAXIMUM LANDMARK COUNT IS SET TO "
+              << MAX_LANDMARK_COUNT << "\n";
+    N = cacheN;
+    return;
+  }
 
-    // Resize all matrices
-    param.X.conservativeResizeLike(VectorXd::Zero(N));
-    param.Z.conservativeResizeLike(VectorXd::Zero(N));
-    param.Q.conservativeResizeLike(MatrixXd::Zero(N, N));
-    param.I.conservativeResizeLike(MatrixXd::Identity(N, N));
-    param.A.conservativeResizeLike(MatrixXd::Identity(N, N));
-    param.H.conservativeResizeLike(MatrixXd::Identity(N, N));
-    param.P.conservativeResizeLike(MatrixXd::Identity(N, N) * 1.0);
-    param.R.conservativeResizeLike(MatrixXd::Identity(N, N) * 0.2);
+  // Resize all matrices
+  param.X.conservativeResizeLike(VectorXd::Zero(N));
+  param.Z.conservativeResizeLike(VectorXd::Zero(N));
+  param.Q.conservativeResizeLike(MatrixXd::Zero(N, N));
+  param.I.conservativeResizeLike(MatrixXd::Identity(N, N));
+  param.A.conservativeResizeLike(MatrixXd::Identity(N, N));
+  param.H.conservativeResizeLike(MatrixXd::Identity(N, N));
+  param.P.conservativeResizeLike(MatrixXd::Identity(N, N) * 1.0);
+  param.R.conservativeResizeLike(MatrixXd::Identity(N, N) * 0.2);
 
-    for (uint32_t i = 0; i < size * 2; i += 2)
-    {
-        // Update Z
-        param.Z(cacheN + i) = NewLandmarkList[i / 2].range;
-        param.Z(cacheN + i + 1) = NewLandmarkList[i / 2].bearing;
+  for (uint32_t i = 0; i < size * 2; i += 2) {
+    // Update Z
+    param.Z(cacheN + i) = NewLandmarkList[i / 2].range;
+    param.Z(cacheN + i + 1) = NewLandmarkList[i / 2].bearing;
 
-        // Update X
-        param.X(cacheN + i) = param.Z(0) + param.Z(cacheN + i) * std::cos(param.Z(2) + param.Z(cacheN + i + 1));
-        param.X(cacheN + i + 1) = param.Z(1) + param.Z(cacheN + i) * std::sin(param.Z(2) + param.Z(cacheN + i + 1));
-    }
+    // Update X
+    param.X(cacheN + i) =
+        param.Z(0) +
+        param.Z(cacheN + i) * std::cos(param.Z(2) + param.Z(cacheN + i + 1));
+    param.X(cacheN + i + 1) =
+        param.Z(1) +
+        param.Z(cacheN + i) * std::sin(param.Z(2) + param.Z(cacheN + i + 1));
+  }
 }
 
 /// \brief Perform predict and update steps
-void aslam::EKFSlam::slam(const float &vx, const float &az, const float &deltaTime)
-{
-    param.X = stateTransitionFunction(N, param.X, vx, az, deltaTime);
-    param.X(2) = normalizeAngle(param.X(2));
-    param.P = param.A * param.P * param.A.transpose() + param.Q;
+void aslam::EKFSlam::slam(const float &vx, const float &az,
+                          const float &deltaTime) {
+  param.X = stateTransitionFunction(N, param.X, vx, az, deltaTime);
+  param.X(2) = normalizeAngle(param.X(2));
+  param.P = param.A * param.P * param.A.transpose() + param.Q;
 
-    aslam::EKFSlam::updateH();
-    MatrixXd S = param.H * param.P * param.H.transpose() + param.R;
-    MatrixXd K = param.P * param.H.transpose() * S.inverse();
-    VectorXd Y = param.Z - measurementFunction(N, param.X);
+  aslam::EKFSlam::updateH();
+  MatrixXd S = param.H * param.P * param.H.transpose() + param.R;
+  MatrixXd K = param.P * param.H.transpose() * S.inverse();
+  VectorXd Y = param.Z - measurementFunction(N, param.X);
 
-    for (uint32_t j = 0; j < N - 1; j += 2)
-    {
-        Y(2 + j) = normalizeAngle(Y(2 + j));
-    }
+  for (uint32_t j = 0; j < N - 1; j += 2) {
+    Y(2 + j) = normalizeAngle(Y(2 + j));
+  }
 
-    param.X = param.X + K * Y;
-    param.P = (param.I - K * param.H) * param.P;
+  param.X = param.X + K * Y;
+  param.P = (param.I - K * param.H) * param.P;
 }
 
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "aslam_ekf");
-    ros::Time::init();
-    ros::Rate rate(1);
-    aslam::EKFSlam a;
-    std::cerr << "[EKF] Node started!\n";
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "aslam_ekf");
+  ros::Time::init();
+  ros::Rate rate(1);
+  aslam::EKFSlam a;
+  std::cerr << "[EKF] Node started!\n";
 
-    while (ros::ok())
-    {
-        ros::spinOnce();
-        rate.sleep();
-    }
+  while (ros::ok()) {
+    ros::spinOnce();
+    rate.sleep();
+  }
 }

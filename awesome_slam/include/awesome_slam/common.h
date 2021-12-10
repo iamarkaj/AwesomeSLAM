@@ -43,70 +43,65 @@
 using Eigen::VectorXd;
 
 /// \brief State transition function aka f
-VectorXd stateTransitionFunction(const uint32_t N, const VectorXd &point, const float &vx, const float &az,
-                                 const float &deltaTime)
-{
-    VectorXd P;
-    P = point.head(N);
+VectorXd stateTransitionFunction(const uint32_t N, const VectorXd &point,
+                                 const float &vx, const float &az,
+                                 const float &deltaTime) {
+  VectorXd P;
+  P = point.head(N);
 
-    // Avoid division by 0
-    if (std::fabs(az) > 0.001)
-    {
-        float r = vx / az;
-        P(0) += r * (-std::sin(point(2)) + std::sin(point(2) + az * deltaTime));
-        P(1) += r * (std::cos(point(2)) - std::cos(point(2) + az * deltaTime));
-    }
-    else
-    {
-        P(0) += vx * deltaTime * std::cos(point(2));
-        P(1) += vx * deltaTime * std::sin(point(2));
-    }
+  // Avoid division by 0
+  if (std::fabs(az) > 0.001) {
+    float r = vx / az;
+    P(0) += r * (-std::sin(point(2)) + std::sin(point(2) + az * deltaTime));
+    P(1) += r * (std::cos(point(2)) - std::cos(point(2) + az * deltaTime));
+  } else {
+    P(0) += vx * deltaTime * std::cos(point(2));
+    P(1) += vx * deltaTime * std::sin(point(2));
+  }
 
-    P(2) += az * deltaTime;
+  P(2) += az * deltaTime;
 
-    // Add noise only for augmented matrix
-    if (point.size() > N)
-    {
-        P(0) += 0.5 * deltaTime * deltaTime * point(N) * std::cos(point(2));
-        P(1) += 0.5 * deltaTime * deltaTime * point(N) * std::sin(point(2));
-        P(2) += 0.5 * deltaTime * deltaTime * az;
-    }
+  // Add noise only for augmented matrix
+  if (point.size() > N) {
+    P(0) += 0.5 * deltaTime * deltaTime * point(N) * std::cos(point(2));
+    P(1) += 0.5 * deltaTime * deltaTime * point(N) * std::sin(point(2));
+    P(2) += 0.5 * deltaTime * deltaTime * az;
+  }
 
-    return P;
+  return P;
 }
 
 /// \brief Measurement function aka h
-VectorXd measurementFunction(const uint32_t N, const VectorXd &point)
-{
-    VectorXd P;
-    P = point;
+VectorXd measurementFunction(const uint32_t N, const VectorXd &point) {
+  VectorXd P;
+  P = point;
 
-    for (uint32_t i = 0; i < N - 3; i += 2)
-    {
-        P(3 + i) = std::sqrt(std::pow(point(3 + i) - point(0), 2) + std::pow(point(4 + i) - point(1), 2));
-        P(4 + i) = std::atan2(point(4 + i) - point(1), point(3 + i) - point(0)) - point(2);
-    }
+  for (uint32_t i = 0; i < N - 3; i += 2) {
+    P(3 + i) = std::sqrt(std::pow(point(3 + i) - point(0), 2) +
+                         std::pow(point(4 + i) - point(1), 2));
+    P(4 + i) =
+        std::atan2(point(4 + i) - point(1), point(3 + i) - point(0)) - point(2);
+  }
 
-    return P;
+  return P;
 }
 
 /// \brief Convert X matrix to ROS msg
-awesome_slam_msgs::Landmarks convertToLandmarkMsg(const uint32_t N, const VectorXd &X)
-{
-    std::vector<double> predX;
-    std::vector<double> predY;
+awesome_slam_msgs::Landmarks convertToLandmarkMsg(const uint32_t N,
+                                                  const VectorXd &X) {
+  std::vector<double> predX;
+  std::vector<double> predY;
 
-    for (uint32_t i = 0; i < N - 3; i += 2)
-    {
-        predX.push_back(X(3 + i));
-        predY.push_back(X(4 + i));
-    }
+  for (uint32_t i = 0; i < N - 3; i += 2) {
+    predX.push_back(X(3 + i));
+    predY.push_back(X(4 + i));
+  }
 
-    awesome_slam_msgs::Landmarks L;
-    L.x = predX;
-    L.y = predY;
+  awesome_slam_msgs::Landmarks L;
+  L.x = predX;
+  L.y = predY;
 
-    return L;
+  return L;
 }
 
-#endif // ASLAM_COMMON_H
+#endif  // ASLAM_COMMON_H

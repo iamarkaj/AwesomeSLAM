@@ -41,29 +41,27 @@
 #include <eigen3/Eigen/Core>
 
 /// \brief Normalize angle
-inline float normalizeAngle(const float &theta)
-{
-    float ret = theta;
+inline float normalizeAngle(const float &theta) {
+  float ret = theta;
+  ret = std::fmod(ret, 2 * PI);
 
-    ret = std::fmod(ret, 2 * PI);
+  if (ret > PI) {
+    ret -= 2 * PI;
+  }
 
-    if (ret > PI)
-    {
-        ret -= 2 * PI;
-    }
-
-    if (ret < -PI)
-    {
-        ret += 2 * PI;
-    }
-    return ret;
+  if (ret < -PI) {
+    ret += 2 * PI;
+  }
+  return ret;
 }
 
 /// \brief Calculate the distance between two points
-inline float EulerDistance(const Eigen::Vector2d &p1, const Eigen::Vector2d &p2)
-{
-    float ret = std::sqrt(std::pow((p1(0) - p2(0)), 2) + std::pow((p1(1) - p2(1)), 2));
-    return ret;
+inline float EulerDistance(const Eigen::Vector2d &p1,
+                           const Eigen::Vector2d &p2) {
+  float dx = p1(0) - p2(0);
+  float dy = p1(1) - p2(1);
+  float ret = std::sqrt(dx * dx + dy * dy);
+  return ret;
 }
 
-#endif // ASLAM_TOOLS_H
+#endif  // ASLAM_TOOLS_H

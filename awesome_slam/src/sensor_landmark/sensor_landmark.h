@@ -48,27 +48,41 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-namespace aslam
-{
-class LandMarks
-{
-  public:
-    LandMarks();
+namespace aslam {
+class LandMarks {
+ public:
+  LandMarks();
 
-  private:
-    ros::NodeHandle nh;
-    ros::Subscriber subLaser;
-    ros::Publisher pubLandmarks;
+ private:
+  ros::NodeHandle nh;
 
-    std::vector<float> sinMap;
-    std::vector<float> cosMap;
+ private:
+  ros::Subscriber subLaser;
 
-    void initialize();
-    Circle circleFitting(const std::vector<Point> &points_);
-    void callback(const sensor_msgs::LaserScan::ConstPtr &msg);
-    bool circleClassification(const std::vector<Point> &points) const;
-    inline Point bearing2pose(const int16_t theta, const float &dist) const;
+ private:
+  ros::Publisher pubLandmarks;
+
+ private:
+  std::vector<float> sinMap;
+
+ private:
+  std::vector<float> cosMap;
+
+ private:
+  void initialize();
+
+ private:
+  Circle circleFitting(const std::vector<Point> &points_);
+
+ private:
+  void callback(const sensor_msgs::LaserScan::ConstPtr &msg);
+
+ private:
+  bool circleClassification(const std::vector<Point> &points) const;
+
+ private:
+  inline Point bearing2pose(const int16_t theta, const float &dist) const;
 };
-} // namespace aslam
+}  // namespace aslam
 
-#endif // ASLAM_SENSOR_LANDMARK_H
+#endif  // ASLAM_SENSOR_LANDMARK_H

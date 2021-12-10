@@ -53,52 +53,81 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-struct Parameters
-{
-    VectorXd X;
-    VectorXd Z;
+struct Parameters {
+  VectorXd X;
+  VectorXd Z;
 
-    MatrixXd I;
-    MatrixXd A;
-    MatrixXd P;
-    MatrixXd H;
-    MatrixXd Q;
-    MatrixXd R;
+  MatrixXd I;
+  MatrixXd A;
+  MatrixXd P;
+  MatrixXd H;
+  MatrixXd Q;
+  MatrixXd R;
 };
 
-namespace aslam
-{
-class EKFSlam
-{
-  public:
-    EKFSlam();
+namespace aslam {
+class EKFSlam {
+ public:
+  EKFSlam();
 
-  private:
-    ros::NodeHandle nh;
-    ros::Subscriber subOdom;
-    ros::Subscriber subSensorLM;
-    ros::Publisher pubLandmarks;
+ private:
+  ros::NodeHandle nh;
 
-    uint32_t N;
-    bool initX;
-    float lastTime;
-    bool initZwithLaser;
+ private:
+  ros::Subscriber subOdom;
 
-    std::vector<LaserData> sensorMeasuredLM;
-    std::vector<std::pair<LaserData, uint32_t>> NewLandmarkWaitingList;
+ private:
+  ros::Subscriber subSensorLM;
 
-    Parameters param;
+ private:
+  ros::Publisher pubLandmarks;
 
-    void initialize();
-    void cbOdom(const nav_msgs::Odometry::ConstPtr &msg);
-    void cbSensorLandmark(const awesome_slam_msgs::Landmarks::ConstPtr &msg);
+ private:
+  uint32_t N;
 
-    void updateH();
-    void updateZandA(const nav_msgs::Odometry::ConstPtr &msg, const float &deltaTime);
-    void sendToNewLandmarkWaiting(const LaserData &data);
-    void addNewLandmark(const std::vector<LaserData> &NewLandmarkList);
-    void slam(const float &vx, const float &az, const float &deltaTime);
+ private:
+  bool initX;
+
+ private:
+  float lastTime;
+
+ private:
+  bool initZwithLaser;
+
+ private:
+  std::vector<LaserData> sensorMeasuredLM;
+
+ private:
+  std::vector<std::pair<LaserData, uint32_t>> NewLandmarkWaitingList;
+
+ private:
+  Parameters param;
+
+ private:
+  void initialize();
+
+ private:
+  void cbOdom(const nav_msgs::Odometry::ConstPtr &msg);
+
+ private:
+  void cbSensorLandmark(const awesome_slam_msgs::Landmarks::ConstPtr &msg);
+
+ private:
+  void updateH();
+
+ private:
+  void updateZandA(const nav_msgs::Odometry::ConstPtr &msg,
+                   const float &deltaTime);
+
+ private:
+  void sendToNewLandmarkWaiting(const LaserData &data);
+
+ private:
+  void addNewLandmark(const std::vector<LaserData> &NewLandmarkList);
+
+ private:
+  void slam(const float &vx, const float &az, const float &deltaTime);
 };
-} // namespace aslam
+}  // namespace aslam
 
-#endif // ASLAM_EKF_SLAM_H
+#endif  // ASLAM_EKF_SLAM_H

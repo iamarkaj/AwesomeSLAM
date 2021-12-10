@@ -35,56 +35,54 @@
 
 #include "gazebo_spawn.h"
 
-aslam::GazeboSpawn::GazeboSpawn() : nh(ros::NodeHandle())
-{
-    ros::service::waitForService("/gazebo/spawn_sdf_model");
-    ros::ServiceClient client = nh.serviceClient<gazebo_msgs::SpawnModel>("/gazebo/spawn_sdf_model");
+aslam::GazeboSpawn::GazeboSpawn() : nh(ros::NodeHandle()) {
+  ros::service::waitForService("/gazebo/spawn_sdf_model");
+  ros::ServiceClient client =
+      nh.serviceClient<gazebo_msgs::SpawnModel>("/gazebo/spawn_sdf_model");
 
-    // Read positions from config/landmarks.yaml
-    std::vector<double> origX;
-    std::vector<double> origY;
-    nh.getParam("landmarks/x", origX);
-    nh.getParam("landmarks/y", origY);
+  // Read positions from config/landmarks.yaml
+  std::vector<double> origX;
+  std::vector<double> origY;
+  nh.getParam("landmarks/x", origX);
+  nh.getParam("landmarks/y", origY);
 
-    // Read model sdf
-    std::string model_xml_path;
-    nh.getParam("/gazebo_spawn/model_xml_path", model_xml_path);
-    std::cout << model_xml_path << "\n";
-    std::ifstream file(model_xml_path);
-    std::string model_xml = {std::istreambuf_iterator<char>(file), {}};
+  // Read model sdf
+  std::string model_xml_path;
+  nh.getParam("/gazebo_spawn/model_xml_path", model_xml_path);
+  std::cout << model_xml_path << "\n";
+  std::ifstream file(model_xml_path);
+  std::string model_xml = {std::istreambuf_iterator<char>(file), {}};
 
-    // Set common model desc
-    gazebo_msgs::SpawnModel model;
-    model.request.robot_namespace = "aslam";
-    model.request.reference_frame = "world";
-    model.request.model_xml = model_xml;
- 
-    // Set common pose desc
-    geometry_msgs::Pose initial_pose;
-    initial_pose.position.z = 0.0;
-    initial_pose.orientation.x = 0.0;
-    initial_pose.orientation.y = 0.0;
-    initial_pose.orientation.z = 0.0;
-    initial_pose.orientation.w = 0.0;
+  // Set common model desc
+  gazebo_msgs::SpawnModel model;
+  model.request.robot_namespace = "aslam";
+  model.request.reference_frame = "world";
+  model.request.model_xml = model_xml;
 
-    // Spawn model
-    uint32_t N = origX.size();
-    for (int i = 0; i < N; ++i)
-    {
-        initial_pose.position.x = origX[i];
-        initial_pose.position.y = origY[i];
+  // Set common pose desc
+  geometry_msgs::Pose initial_pose;
+  initial_pose.position.z = 0.0;
+  initial_pose.orientation.x = 0.0;
+  initial_pose.orientation.y = 0.0;
+  initial_pose.orientation.z = 0.0;
+  initial_pose.orientation.w = 0.0;
 
-        model.request.initial_pose = initial_pose;
-        model.request.model_name = "cylinder_" + std::to_string(i);
+  // Spawn model
+  uint32_t N = origX.size();
+  for (uint32_t i = 0; i < N; ++i) {
+    initial_pose.position.x = origX[i];
+    initial_pose.position.y = origY[i];
 
-        client.call(model);
-    }
+    model.request.initial_pose = initial_pose;
+    model.request.model_name = "cylinder_" + std::to_string(i);
+
+    client.call(model);
+  }
 }
 
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "aslam_gazebo_spawn");
-    aslam::GazeboSpawn a;
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "aslam_gazebo_spawn");
+  aslam::GazeboSpawn a;
 
-    std::cerr << "[GAZEBO SPAWN] Model spawned!\n";
+  std::cerr << "[GAZEBO SPAWN] Model spawned!\n";
 }

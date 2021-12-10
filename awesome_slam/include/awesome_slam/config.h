@@ -42,4 +42,4 @@
 #define MIN_LANDMARK_OCC 10
 #define MAX_LANDMARK_COUNT 30
 
-#endif // ASLAM_CONFIG_H
+#endif  // ASLAM_CONFIG_H

@@ -41,26 +41,34 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
-namespace aslam
-{
-class Visualize
-{
-  public:
-    Visualize();
+namespace aslam {
+class Visualize {
+ public:
+  Visualize();
 
-  private:
-    ros::NodeHandle nh;
-    ros::Publisher pubMarker;
-    ros::Subscriber subLandmark;
+ private:
+  ros::NodeHandle nh;
 
-    std::vector<double> origX;
-    std::vector<double> origY;
+ private:
+  ros::Publisher pubMarker;
 
-    void callback(const awesome_slam_msgs::LandmarksConstPtr &msg);
+ private:
+  ros::Subscriber subLandmark;
 
-    visualization_msgs::Marker createMarker(const float &x, const float &y, const uint32_t id, const float &g,
-                                                  const float &b) const;
+ private:
+  std::vector<double> origX;
+
+ private:
+  std::vector<double> origY;
+
+ private:
+  void callback(const awesome_slam_msgs::LandmarksConstPtr &msg);
+
+ private:
+  visualization_msgs::Marker createMarker(const float &x, const float &y,
+                                          const uint32_t id, const float &g,
+                                          const float &b) const;
 };
-} // namespace aslam
+}  // namespace aslam
 
-#endif // ASLAM_RVIZ_VISUALIZE_H
+#endif  // ASLAM_RVIZ_VISUALIZE_H

@@ -41,96 +41,67 @@
 
 #include <eigen3/Eigen/Core>
 
-struct Point
-{
-    Eigen::Vector2d point;
+struct Point {
+  Eigen::Vector2d point;
 
-    Point()
-    {
-    }
+  Point() {}
 
-    Point(const float &a, const float &b) : point(a, b)
-    {
-    }
+  Point(const float &a, const float &b) : point(a, b) {}
 
-    void assign(const float &a, const float &b)
-    {
-        point << a, b;
-    }
+  void assign(const float &a, const float &b) { point << a, b; }
 
-    void assign(const Point &P)
-    {
-        point << P.point(0), P.point(1);
-    }
+  void assign(const Point &P) { point << P.point(0), P.point(1); }
 
-    float operator()(const uint8_t i) const
-    {
-        return point(i);
-    }
+  float operator()(const uint8_t i) const { return point(i); }
 
-    float distance(const Point &P) const
-    {
-        float ret = EulerDistance(point, P.point);
-        return ret;
-    }
+  float distance(const Point &P) const {
+    float ret = EulerDistance(point, P.point);
+    return ret;
+  }
 
-    bool operator==(const Point &P) const
-    {
-        float dist = EulerDistance(point, P.point);
-        bool ret = dist < MIN_DIST_THRESH;
-        return ret;
-    }
+  bool operator==(const Point &P) const {
+    float dist = EulerDistance(point, P.point);
+    bool ret = dist < MIN_DIST_THRESH;
+    return ret;
+  }
 };
 
-struct LaserData
-{
-    float range;
-    float bearing;
+struct LaserData {
+  float range;
+  float bearing;
 
-    LaserData()
-    {
-    }
+  LaserData() {}
 
-    LaserData(const float &a, const float &b) : range(a), bearing(b)
-    {
-    }
+  LaserData(const float &a, const float &b) : range(a), bearing(b) {}
 
-    void assign(const float &a, const float &b)
-    {
-        range = a;
-        bearing = b;
-    }
+  void assign(const float &a, const float &b) {
+    range = a;
+    bearing = b;
+  }
 
-    Point toPoint(const Eigen::VectorXd &Z) const
-    {
-        float x = Z(0) + range * std::cos(Z(2) + bearing);
-        float y = Z(1) + range * std::sin(Z(2) + bearing);
-        Point ret(x, y);
+  Point toPoint(const Eigen::VectorXd &Z) const {
+    float x = Z(0) + range * std::cos(Z(2) + bearing);
+    float y = Z(1) + range * std::sin(Z(2) + bearing);
+    Point ret(x, y);
 
-        return ret;
-    }
+    return ret;
+  }
 };
 
-struct Circle
-{
-    Eigen::Vector2d center;
+struct Circle {
+  Eigen::Vector2d center;
 
-    Circle()
-    {
-    }
+  Circle() {}
 
-    Circle(const float &a, const float &b) : center(a, b)
-    {
-    }
+  Circle(const float &a, const float &b) : center(a, b) {}
 
-    LaserData toLaserData() const
-    {
-        float r = std::sqrt(center(0) * center(0) + center(1) * center(1));
-        float b = std::atan2(center(1), center(0));
-        LaserData ret(r, b);
+  LaserData toLaserData() const {
+    float r = std::sqrt(center(0) * center(0) + center(1) * center(1));
+    float b = std::atan2(center(1), center(0));
+    LaserData ret(r, b);
 
-        return ret;
-    }
+    return ret;
+  }
 };
 
-#endif // ASLAM_STRUCTURES_H
+#endif  // ASLAM_STRUCTURES_H

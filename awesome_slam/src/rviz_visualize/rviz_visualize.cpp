@@ -35,80 +35,76 @@
 
 #include "rviz_visualize.h"
 
-aslam::Visualize::Visualize() : nh(ros::NodeHandle())
-{
-    nh.getParam("landmarks/x", origX);
-    nh.getParam("landmarks/y", origY);
+aslam::Visualize::Visualize() : nh(ros::NodeHandle()) {
+  nh.getParam("landmarks/x", origX);
+  nh.getParam("landmarks/y", origY);
 
-    pubMarker = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 10);
-    subLandmark = nh.subscribe("out/landmarks/kalman", 10, &aslam::Visualize::callback, this);
+  pubMarker = nh.advertise<visualization_msgs::MarkerArray>("out/marker", 10);
+  subLandmark = nh.subscribe("out/landmarks/kalman", 10,
+                             &aslam::Visualize::callback, this);
 }
 
-void aslam::Visualize::callback(const awesome_slam_msgs::LandmarksConstPtr &msg)
-{
-    uint32_t size;
-    int32_t id = -1;
+void aslam::Visualize::callback(
+    const awesome_slam_msgs::LandmarksConstPtr &msg) {
+  uint32_t size;
+  int32_t id = -1;
 
-    visualization_msgs::Marker m;
-    visualization_msgs::MarkerArray markerArray;
+  visualization_msgs::Marker m;
+  visualization_msgs::MarkerArray markerArray;
 
-    // Create marker for groud truth positions
-    size = origX.size();
-    for (int i = 0; i < size; ++i)
-    {
-        m = aslam::Visualize::createMarker(origX[i], origY[i], ++id, 0.0f, 1.0f);
-        markerArray.markers.push_back(m);
-    }
+  // Create marker for groud truth positions
+  size = origX.size();
+  for (int i = 0; i < size; ++i) {
+    m = aslam::Visualize::createMarker(origX[i], origY[i], ++id, 0.0f, 1.0f);
+    markerArray.markers.push_back(m);
+  }
 
-    // Create marker for predicted landmark positions
-    size = msg->x.size();
-    for (int i = 0; i < size; ++i)
-    {
-        m = createMarker(msg->x[i], msg->y[i], ++id, 1.0f, 0.0f);
-        markerArray.markers.push_back(m);
-    }
+  // Create marker for predicted landmark positions
+  size = msg->x.size();
+  for (int i = 0; i < size; ++i) {
+    m = createMarker(msg->x[i], msg->y[i], ++id, 1.0f, 0.0f);
+    markerArray.markers.push_back(m);
+  }
 
-    pubMarker.publish(markerArray);
+  pubMarker.publish(markerArray);
 }
 
-visualization_msgs::Marker aslam::Visualize::createMarker(const float &x, const float &y, const uint32_t id,
-                                                                const float &g, const float &b) const
-{
-    visualization_msgs::Marker marker;
-    marker.id = id;
-    marker.lifetime = ros::Duration();
-    marker.header.frame_id = "odom";
-    marker.header.stamp = ros::Time::now();
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.type = visualization_msgs::Marker::CYLINDER;
-    marker.pose.position.x = x;
-    marker.pose.position.y = y;
-    marker.pose.position.z = 0.1;
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-    marker.scale.x = 0.5;
-    marker.scale.y = 0.5;
-    marker.scale.z = 1.0;
-    marker.color.r = 0.0f;
-    marker.color.g = g;
-    marker.color.b = b;
-    marker.color.a = 1.0f;
-    return marker;
+visualization_msgs::Marker aslam::Visualize::createMarker(
+    const float &x, const float &y, const uint32_t id, const float &g,
+    const float &b) const {
+  visualization_msgs::Marker marker;
+  marker.id = id;
+  marker.lifetime = ros::Duration();
+  marker.header.frame_id = "odom";
+  marker.header.stamp = ros::Time::now();
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.type = visualization_msgs::Marker::CYLINDER;
+  marker.pose.position.x = x;
+  marker.pose.position.y = y;
+  marker.pose.position.z = 0.1;
+  marker.pose.orientation.x = 0.0;
+  marker.pose.orientation.y = 0.0;
+  marker.pose.orientation.z = 0.0;
+  marker.pose.orientation.w = 1.0;
+  marker.scale.x = 0.5;
+  marker.scale.y = 0.5;
+  marker.scale.z = 1.0;
+  marker.color.r = 0.0f;
+  marker.color.g = g;
+  marker.color.b = b;
+  marker.color.a = 1.0f;
+  return marker;
 }
 
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "aslam_rviz_visualize");
-    ros::Time::init();
-    ros::Rate rate(1);
-    aslam::Visualize a;
-    std::cerr << "[RVIZ VISUALIZE] Node started!\n";
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "aslam_rviz_visualize");
+  ros::Time::init();
+  ros::Rate rate(1);
+  aslam::Visualize a;
+  std::cerr << "[RVIZ VISUALIZE] Node started!\n";
 
-    while (ros::ok())
-    {
-        ros::spinOnce();
-        rate.sleep();
-    }
+  while (ros::ok()) {
+    ros::spinOnce();
+    rate.sleep();
+  }
 }
