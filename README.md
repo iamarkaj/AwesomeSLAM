@@ -19,12 +19,37 @@ cd AwesomeSLAM && chmod 755 install.sh
 ./install.sh
 ```
 
-## awesome_slam (file structure)
+## Usage
+
+#### Edit landmark positions at
+```
+awesome_slam/config/landmarks.yaml
+```
+
+#### Open Gazebo and Rviz
+```
+roslaunch awesome_slam awesome_slam.launch
+```
+
+#### Run EKF/UKF 
+```
+rosrun awesome_slam ekf
+```
+```
+rosrun awesome_slam ukf
+```
+
+#### Launch turtlebot3_teleop
+```
+roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
+```
+
+## awesome_slam (directory structure)
 
 ```
 ├── CMakeLists.txt
 ├── config
-│   ├── config.rviz
+│   ├── display.rviz
 │   └── landmarks.yaml
 ├── include
 │   └── awesome_slam
@@ -49,41 +74,15 @@ cd AwesomeSLAM && chmod 755 install.sh
 │   ├── gazebo_spawn
 │   │   ├── gazebo_spawn.cpp
 │   │   └── gazebo_spawn.h
-│   ├── rviz_visualize
-│   │   ├── rviz_visualize.cpp
-│   │   └── rviz_visualize.h
 │   ├── sensor_landmark
 │   │   ├── sensor_landmark.cpp
 │   │   └── sensor_landmark.h
-│   └── ukf
-│       ├── ukf.cpp
-│       └── ukf.h
+│   ├── ukf
+│   │   ├── ukf.cpp
+│   │   └── ukf.h
+│   └── visualize_landmark
+│       ├── visualize_landmark.cpp
+│       └── visualize_landmark.h
 └── worlds
     └── awesome_slam.world
-```
-
-
-## Usage
-
-#### Edit landmark positions at
-```
-awesome_slam/config/landmarks.yaml
-```
-
-#### Open Gazebo and Rviz
-```
-roslaunch awesome_slam awesome_slam.launch
-```
-
-#### Run EKF/UKF 
-```
-rosrun awesome_slam ekf
-```
-```
-rosrun awesome_slam ukf
-```
-
-#### Launch turtlebot3_teleop
-```
-roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
 ```

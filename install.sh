@@ -13,4 +13,4 @@ echo "export TURTLEBOT3_MODEL=burger" >> ~/.bashrc
 echo "export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:~/AwesomeSLAM/awesome_slam/models" >> ~/.bashrc
 source ~/.bashrc
 
-echo Completed.
+echo Done
