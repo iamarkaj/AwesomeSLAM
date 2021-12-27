@@ -32,9 +32,9 @@ add_executable(sensor_landmark src/sensor_landmark/sensor_landmark.cpp)
 add_dependencies(sensor_landmark ${sensor_landmark_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(sensor_landmark ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
-add_executable(rviz_visualize src/rviz_visualize/rviz_visualize.cpp)
-add_dependencies(rviz_visualize ${rviz_visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(rviz_visualize ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_executable(visualize_landmark src/visualize_landmark/visualize_landmark.cpp)
+add_dependencies(visualize_landmark ${rviz_visualize_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(visualize_landmark ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 add_executable(ekf src/ekf/ekf.cpp)
 add_dependencies(ekf ${ekf_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

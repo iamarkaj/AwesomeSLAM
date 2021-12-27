@@ -36,10 +36,33 @@
 #ifndef ASLAM_CONFIG_H
 #define ASLAM_CONFIG_H
 
-#define PI 3.141592654
-#define DEG2RAD 0.01745329251
-#define MIN_DIST_THRESH 2.0
-#define MIN_LANDMARK_OCC 10
-#define MAX_LANDMARK_COUNT 30
+const float PI = 3.141592654;
+const float DEG2RAD = 0.01745329251;
 
-#endif  // ASLAM_CONFIG_H
+const int FREQ = 1;
+const float MIN_DIST_THRESH = 0.5;
+const int MIN_LANDMARK_OCC = 10;
+const int MAX_LANDMARK_COUNT = 30;
+
+// Sensor Landmark
+const float STD = 0.4;
+const float MIN_MEAN = 1.5;
+const float MAX_MEAN = 3.0;
+const int MIN_CLUSTER_POINTS = 3;
+
+// UKF
+const float UKF_STD_A = 0.2;
+const float UKF_STD_YAW = 0.2;
+const float UKF_KP_ROBOT_POSE = 0.001;
+const float UKF_KP_LANDMARK_POSE = 1.0;
+const float UKF_KR = 0.2;
+const float UKF_KQ = 0.001;
+
+// EKF
+const float EKF_KP_ROBOT_POSE = 0.001;
+const float EKF_KP_LANDMARK_POSE = 10000.0;
+const float EKF_KR = 0.2;
+const float EKF_KQ = 0.001;
+
+
+#endif // ASLAM_CONFIG_H

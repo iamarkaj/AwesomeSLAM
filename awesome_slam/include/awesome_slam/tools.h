@@ -41,27 +41,28 @@
 #include <eigen3/Eigen/Core>
 
 /// \brief Normalize angle
-inline float normalizeAngle(const float &theta) {
-  float ret = theta;
-  ret = std::fmod(ret, 2 * PI);
-
-  if (ret > PI) {
-    ret -= 2 * PI;
-  }
-
-  if (ret < -PI) {
-    ret += 2 * PI;
-  }
-  return ret;
+inline float normalizeAngle(const float &theta)
+{
+        float ret = std::fmod(theta, 2 * PI);
+        ret = ret > PI ? ret - 2 * PI : ret;
+        ret = ret < -PI ? ret + 2 * PI : ret;
+        return ret;
 }
 
 /// \brief Calculate the distance between two points
-inline float EulerDistance(const Eigen::Vector2d &p1,
-                           const Eigen::Vector2d &p2) {
-  float dx = p1(0) - p2(0);
-  float dy = p1(1) - p2(1);
-  float ret = std::sqrt(dx * dx + dy * dy);
-  return ret;
+inline float eulerDistance(const Eigen::Vector2d &p1, const Eigen::Vector2d &p2)
+{
+        float dx = p1(0) - p2(0);
+        float dy = p1(1) - p2(1);
+        float ret = std::sqrt(dx * dx + dy * dy);
+        return ret;
 }
 
-#endif  // ASLAM_TOOLS_H
+/// \brief Convert Quaternion angle to Euler angle
+inline float quat2euler(const float &w, const float &x, const float &y, const float &z)
+{
+        float yaw = std::atan2(2 * (w * z + x * y), 1 - 2 * (z * z + y * y));
+        return yaw;
+}
+
+#endif // ASLAM_TOOLS_H

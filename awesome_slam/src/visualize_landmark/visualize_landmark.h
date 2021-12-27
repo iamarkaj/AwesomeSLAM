@@ -33,42 +33,43 @@
  *
  */
 
-#ifndef ASLAM_RVIZ_VISUALIZE_H
-#define ASLAM_RVIZ_VISUALIZE_H
+#ifndef ASLAM_VISUALIZE_LANDMARK_H
+#define ASLAM_VISUALIZE_LANDMARK_H
 
 #include <awesome_slam_msgs/Landmarks.h>
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
-namespace aslam {
-class Visualize {
- public:
-  Visualize();
+namespace aslam
+{
+class VisualizeLandmark
+{
+      public:
+        VisualizeLandmark();
 
- private:
-  ros::NodeHandle nh;
+      private:
+        ros::NodeHandle nh;
 
- private:
-  ros::Publisher pubMarker;
+      private:
+        ros::Publisher pub_marker;
 
- private:
-  ros::Subscriber subLandmark;
+      private:
+        ros::Subscriber sub_landmark;
 
- private:
-  std::vector<double> origX;
+      private:
+        std::vector<double> orig_x;
 
- private:
-  std::vector<double> origY;
+      private:
+        std::vector<double> orig_y;
 
- private:
-  void callback(const awesome_slam_msgs::LandmarksConstPtr &msg);
+      private:
+        void callback(const awesome_slam_msgs::LandmarksConstPtr &msg);
 
- private:
-  visualization_msgs::Marker createMarker(const float &x, const float &y,
-                                          const uint32_t id, const float &g,
-                                          const float &b) const;
+      private:
+        visualization_msgs::Marker createMarker(const float &pos_x, const float &pos_y, const float &color_green, const float &color_blue,
+                                                const uint32_t id) const;
 };
-}  // namespace aslam
+} // namespace aslam
 
-#endif  // ASLAM_RVIZ_VISUALIZE_H
+#endif // ASLAM_VISUALIZE_LANDMARK_H

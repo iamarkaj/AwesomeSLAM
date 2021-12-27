@@ -53,81 +53,83 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-struct Parameters {
-  VectorXd X;
-  VectorXd Z;
+struct Parameters
+{
+        VectorXd X;
+        VectorXd Z;
 
-  MatrixXd I;
-  MatrixXd A;
-  MatrixXd P;
-  MatrixXd H;
-  MatrixXd Q;
-  MatrixXd R;
+        MatrixXd I;
+        MatrixXd A;
+        MatrixXd P;
+        MatrixXd H;
+        MatrixXd Q;
+        MatrixXd R;
 };
 
-namespace aslam {
-class EKFSlam {
- public:
-  EKFSlam();
+namespace aslam
+{
+class EKFSlam
+{
+      public:
+        EKFSlam();
 
- private:
-  ros::NodeHandle nh;
+      private:
+        ros::NodeHandle nh;
 
- private:
-  ros::Subscriber subOdom;
+      private:
+        ros::Subscriber sub_odom;
 
- private:
-  ros::Subscriber subSensorLM;
+      private:
+        ros::Subscriber sub_sensor_landmark;
 
- private:
-  ros::Publisher pubLandmarks;
+      private:
+        ros::Publisher pub_landmark;
 
- private:
-  uint32_t N;
+      private:
+        uint32_t N;
 
- private:
-  bool initX;
+      private:
+        bool init_z;
 
- private:
-  float lastTime;
+      private:
+        bool init_x;
 
- private:
-  bool initZwithLaser;
+      private:
+        float last_time;
 
- private:
-  std::vector<LaserData> sensorMeasuredLM;
+      private:
+        std::vector<LaserData> sensor_landmark;
 
- private:
-  std::vector<std::pair<LaserData, uint32_t>> NewLandmarkWaitingList;
+      private:
+        std::vector<std::pair<LaserData, uint32_t>> new_landmark_wait;
 
- private:
-  Parameters param;
+      private:
+        Parameters param;
 
- private:
-  void initialize();
+      private:
+        void initialize();
 
- private:
-  void cbOdom(const nav_msgs::Odometry::ConstPtr &msg);
+      private:
+        void cbOdom(const nav_msgs::Odometry::ConstPtr &msg);
 
- private:
-  void cbSensorLandmark(const awesome_slam_msgs::Landmarks::ConstPtr &msg);
+      private:
+        void cbSensorLandmark(const awesome_slam_msgs::Landmarks::ConstPtr &msg);
 
- private:
-  void updateH();
+      private:
+        void updateH();
 
- private:
-  void updateZandA(const nav_msgs::Odometry::ConstPtr &msg,
-                   const float &deltaTime);
+      private:
+        void updateZandA(const nav_msgs::Odometry::ConstPtr &msg, const float &deltaTime);
 
- private:
-  void sendToNewLandmarkWaiting(const LaserData &data);
+      private:
+        void updateNewLandmarkWait(const LaserData &data);
 
- private:
-  void addNewLandmark(const std::vector<LaserData> &NewLandmarkList);
+      private:
+        void updateNewLandmark(const std::vector<LaserData> &NewLandmarkList);
 
- private:
-  void slam(const float &vx, const float &az, const float &deltaTime);
+      private:
+        void slam(const float &vx, const float &az, const float &deltaTime);
 };
-}  // namespace aslam
+} // namespace aslam
 
-#endif  // ASLAM_EKF_SLAM_H
+#endif // ASLAM_EKF_SLAM_H

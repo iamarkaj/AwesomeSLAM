@@ -30,11 +30,11 @@
     <!-- Publish range and bearing from laser data -->
     <node name="sensor_landmark" type="sensor_landmark" pkg="awesome_slam"/>
     
-    <!-- Publish marker to visualize into rviz -->
-    <node name="rviz_visualize" type="rviz_visualize" pkg="awesome_slam"/>
+    <!-- Publish marker to visualize landmark into rviz -->
+    <node name="visualize_landmark" type="visualize_landmark" pkg="awesome_slam"/>
     
     <!-- Start rviz -->
-    <node name="rviz_start" type="rviz" pkg="rviz" args="-d $(find awesome_slam)/config/config.rviz"/>
+    <node name="rviz_start" type="rviz" pkg="rviz" args="-d $(find awesome_slam)/config/display.rviz"/>
     
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
         <param name="publish_frequency" type="double" value="50.0"/>

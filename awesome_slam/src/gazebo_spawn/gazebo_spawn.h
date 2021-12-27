@@ -43,14 +43,16 @@
 #include <fstream>
 #include <string>
 
-namespace aslam {
-class GazeboSpawn {
- public:
-  GazeboSpawn();
+namespace aslam
+{
+class GazeboSpawn
+{
+      public:
+        GazeboSpawn();
 
- private:
-  ros::NodeHandle nh;
+      private:
+        ros::NodeHandle nh;
 };
-}  // namespace aslam
+} // namespace aslam
 
-#endif  // ASLAM_GAZEBO_SPAWN_H
+#endif // ASLAM_GAZEBO_SPAWN_H
