@@ -7,7 +7,7 @@
 
 ## Overview
 
-EKF-SLAM and UKF-SLAM on Turtlebot3
+A small open-source project to implement SLAM based on EKF and UKF using Turtlebot3.
 
 <img src="figures/cover.png" alt="stream" width="900"/>
 
